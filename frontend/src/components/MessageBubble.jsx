@@ -79,7 +79,7 @@ export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact'
 
   if (!isExpanded) {
     return (
-      <div className="branch-marker branch-marker-compact">
+      <div className="branch-tracker branch-marker branch-marker-compact">
         <button
           aria-expanded={false}
           className="branch-marker-open"
@@ -94,7 +94,7 @@ export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact'
   }
 
   return (
-    <div className={`branch-marker branch-marker-expanded ${hasMemory ? 'branch-marker-memory' : ''}`}>
+    <div className={`branch-tracker branch-marker branch-marker-expanded ${hasMemory ? 'branch-marker-memory' : ''}`}>
       <button
         aria-expanded={isExpanded}
         className="branch-marker-open"
@@ -150,7 +150,7 @@ export function BranchMarkerGroup({ markers, onOpen, onDelete, displayMode = 'co
 
   if (displayMode === 'compact' && !expanded) {
     return (
-      <div className="branch-marker branch-marker-compact branch-marker-group">
+      <div className="branch-tracker branch-marker branch-marker-compact branch-marker-group">
         <button
           aria-expanded={false}
           className="branch-marker-open"
@@ -165,7 +165,7 @@ export function BranchMarkerGroup({ markers, onOpen, onDelete, displayMode = 'co
   }
 
   return (
-    <div className="branch-marker-group-expanded">
+    <div className="branch-tracker branch-marker-group-expanded">
       <div className="branch-marker-group-head">
         <span>{compactText}</span>
         {displayMode === 'compact' && (

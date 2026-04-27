@@ -98,24 +98,30 @@ export default function ChatPane({
       .join('|');
     if (branchMarkerMode === 'compact') {
       return (
-        <BranchMarkerGroup
-          key={`branch-group-${markerSignature}`}
-          markers={markers}
-          onOpen={onOpenBranchFromMarker}
-          onDelete={onDeleteBranch}
-          displayMode={branchMarkerMode}
-        />
+        <div className="branch-tracker-slot" key={`branch-group-slot-${markerSignature}`}>
+          <BranchMarkerGroup
+            key={`branch-group-${markerSignature}`}
+            markers={markers}
+            onOpen={onOpenBranchFromMarker}
+            onDelete={onDeleteBranch}
+            displayMode={branchMarkerMode}
+          />
+        </div>
       );
     }
-    return markers.map((marker) => (
-      <BranchMarker
-        key={`${marker.id}:${marker.status}:${marker.message_count}:${marker.memory_summary || ''}`}
-        marker={marker}
-        onOpen={onOpenBranchFromMarker}
-        onDelete={onDeleteBranch}
-        displayMode={branchMarkerMode}
-      />
-    ));
+    return (
+      <div className="branch-tracker-slot" key={`branch-list-slot-${markerSignature}`}>
+        {markers.map((marker) => (
+          <BranchMarker
+            key={`${marker.id}:${marker.status}:${marker.message_count}:${marker.memory_summary || ''}`}
+            marker={marker}
+            onOpen={onOpenBranchFromMarker}
+            onDelete={onDeleteBranch}
+            displayMode={branchMarkerMode}
+          />
+        ))}
+      </div>
+    );
   };
 
   return (
