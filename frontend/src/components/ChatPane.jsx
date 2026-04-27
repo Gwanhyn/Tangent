@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { GitBranchPlus, Loader2, MemoryStick, Octagon, Sparkles } from 'lucide-react';
 import Composer from './Composer';
+import ContextTimeline from './ContextTimeline';
 import MessageBubble, { BranchMarker } from './MessageBubble';
+import { useCopy } from '../i18n';
 
 export default function ChatPane({
   title,
@@ -19,6 +21,7 @@ export default function ChatPane({
   onOpenBranch,
   onOpenBranchFromMarker,
 }) {
+  const copy = useCopy();
   const listRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [selectionTrigger, setSelectionTrigger] = useState(null);
@@ -34,9 +37,9 @@ export default function ChatPane({
 
   useEffect(() => {
     const el = listRef.current;
-    if (!el || !autoScroll) return;
+    if (!el || (!autoScroll && !loading)) return;
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  }, [messages, autoScroll]);
+  }, [messages, autoScroll, loading]);
 
   const handleScroll = () => {
     const el = listRef.current;
@@ -74,29 +77,36 @@ export default function ChatPane({
     window.getSelection()?.removeAllRanges();
   };
 
+  const jumpToMessage = (messageId) => {
+    const row = listRef.current?.querySelector(`[data-message-id="${messageId}"]`);
+    row?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <section className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'}`}>
       <header className="pane-header">
         <div>
-          <p className="eyebrow">{branch ? 'Parallel Pane' : 'Main Thread'}</p>
+          <p className="eyebrow">{branch ? copy.chat.branchEyebrow : copy.chat.primaryEyebrow}</p>
           <h2>{title}</h2>
           <p>{subtitle}</p>
         </div>
         {!branch && (
           <div className="pane-actions">
             {hiddenMemoryCount > 0 && (
-              <span className="memory-chip" title="这些隐藏消息会参与下一次主线模型调用">
+              <span className="memory-chip" title={copy.chat.memoryTooltip}>
                 <MemoryStick size={15} />
-                {hiddenMemoryCount} 条隐藏记忆
+                {hiddenMemoryCount} {copy.chat.hiddenMemory}
               </span>
             )}
             <button className="derive-button" onClick={() => onOpenBranch?.()} type="button">
               <GitBranchPlus size={17} />
-              开启衍生
+              {copy.chat.branchOut}
             </button>
           </div>
         )}
       </header>
+
+      <ContextTimeline messages={messages} label={copy.chat.timeline} onJump={jumpToMessage} />
 
       <div
         ref={listRef}
@@ -109,11 +119,11 @@ export default function ChatPane({
             <div className="empty-orb">
               <Sparkles size={28} />
             </div>
-            <h3>{branch ? '从这里追问一个细节' : '开启一段可分叉的对话'}</h3>
+            <h3>{branch ? copy.chat.emptyBranchTitle : copy.chat.emptyMainTitle}</h3>
             <p>
               {branch
-                ? '右侧衍生窗口会继承左侧快照。关闭时，你可以选择同步成隐藏记忆，或保持纯净模式保留快照但不影响主线。'
-                : '先配置模型 Provider，然后发送第一条消息。之后可以随时打开衍生窗口做平行探索。'}
+                ? copy.chat.emptyBranchBody
+                : copy.chat.emptyMainBody}
             </p>
           </div>
         ) : (
@@ -132,7 +142,7 @@ export default function ChatPane({
         {loading && (
           <div className="typing-card">
             <Loader2 className="animate-spin" size={16} />
-            模型正在编织回复...
+            {copy.chat.typing}
           </div>
         )}
       </div>
@@ -145,7 +155,7 @@ export default function ChatPane({
           onClick={openFromSelection}
         >
           <GitBranchPlus size={15} />
-          在此开启平行衍生
+          {copy.chat.selectionBranch}
         </button>
       )}
 
@@ -153,7 +163,7 @@ export default function ChatPane({
         {loading && onStop && (
           <button className="stop-button" type="button" onClick={onStop}>
             <Octagon size={16} />
-            停止生成
+            {copy.chat.stop}
           </button>
         )}
         <Composer
@@ -161,6 +171,8 @@ export default function ChatPane({
           loading={loading}
           disabled={disabled}
           placeholder={placeholder}
+          sendLabel={copy.chat.send}
+          generatingLabel={copy.chat.generating}
         />
       </div>
     </section>

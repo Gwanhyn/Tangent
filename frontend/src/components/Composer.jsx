@@ -1,7 +1,7 @@
 import { SendHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
-export default function Composer({ onSend, loading, disabled, placeholder }) {
+export default function Composer({ onSend, loading, disabled, placeholder, sendLabel = '发送', generatingLabel = '生成中' }) {
   const [value, setValue] = useState('');
 
   const submit = async (event) => {
@@ -29,9 +29,8 @@ export default function Composer({ onSend, loading, disabled, placeholder }) {
       />
       <button className="send-button" disabled={disabled || loading || !value.trim()} type="submit">
         <SendHorizontal size={18} />
-        <span>{loading ? '生成中' : '发送'}</span>
+        <span>{loading ? generatingLabel : sendLabel}</span>
       </button>
     </form>
   );
 }
-

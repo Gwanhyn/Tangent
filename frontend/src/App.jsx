@@ -4,10 +4,12 @@ import ChatPane from './components/ChatPane';
 import ParallelPane from './components/ParallelPane';
 import ProviderPanel from './components/ProviderPanel';
 import Sidebar from './components/Sidebar';
+import { useCopy } from './i18n';
 import { useChatStore } from './store/chatStore';
 
 export default function App() {
   const workspaceRef = useRef(null);
+  const copy = useCopy();
   const {
     bootstrapping,
     activeConversation,
@@ -25,6 +27,9 @@ export default function App() {
     mainLoading,
     branchLoading,
     error,
+    mainPaneColor,
+    branchPaneColor,
+    chatFontSize,
     bootstrap,
     syncWorkspace,
     clearError,
@@ -43,6 +48,12 @@ export default function App() {
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    if (!error) return undefined;
+    const timer = window.setTimeout(clearError, 3000);
+    return () => window.clearTimeout(timer);
+  }, [error, clearError]);
 
   useEffect(() => {
     const syncWhenVisible = () => {
@@ -79,7 +90,7 @@ export default function App() {
     return (
       <main className="boot-screen">
         <Loader2 className="animate-spin" size={28} />
-        <span>正在启动 Tangent 工作台...</span>
+        <span>{copy.app.booting}</span>
       </main>
     );
   }
@@ -93,11 +104,16 @@ export default function App() {
       <section
         ref={workspaceRef}
         className={`workspace ${isParallelMode ? 'is-parallel' : ''}`}
-        style={{ '--main-pane': `${paneWidth}%` }}
+        style={{
+          '--main-pane': `${paneWidth}%`,
+          '--main-pane-bg': mainPaneColor,
+          '--branch-pane-bg': branchPaneColor,
+          '--chat-font-size': `${chatFontSize}px`,
+        }}
       >
         <ChatPane
-          title={activeConversation?.title || '新的平行对话'}
-          subtitle="主线只展示线性对话；已同步的衍生内容会以隐藏记忆参与模型调用。"
+          title={activeConversation?.summary || activeConversation?.title || copy.sidebar.untitled}
+          subtitle={copy.chat.primarySubtitle}
           messages={messages}
           branchMarkers={branchMarkers}
           hiddenMemoryCount={hiddenMemoryCount}
@@ -105,7 +121,7 @@ export default function App() {
           onEdit={(message, content) => sendMainMessage(content, { replaceFromMessageId: message.id })}
           onStop={stopMainGeneration}
           loading={mainLoading}
-          placeholder="向主线提问，Ctrl/⌘ + Enter 发送"
+          placeholder={copy.chat.composer}
           onOpenBranch={openBranch}
           onOpenBranchFromMarker={openExistingBranch}
         />

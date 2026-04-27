@@ -153,8 +153,8 @@ def create_conversation(title: str) -> dict[str, Any]:
     conversation_id = new_id("conv")
     with get_connection() as conn:
         conn.execute(
-            "INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-            (conversation_id, title, now, now),
+            "INSERT INTO conversations (id, title, summary, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+            (conversation_id, title, None, now, now),
         )
         row = conn.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
     return row_to_dict(row)
@@ -206,6 +206,7 @@ def list_branch_markers(conn, conversation_id: str) -> list[dict[str, Any]]:
             b.id,
             b.conversation_id,
             b.parent_id,
+            b.parent_thread_id,
             b.selected_text,
             b.memory_summary,
             b.sync_memory,
@@ -344,6 +345,65 @@ def maybe_update_conversation_title(conn, conversation_id: str, user_content: st
         )
 
 
+def fallback_conversation_summary(user_content: str) -> str:
+    compact = " ".join(user_content.strip().split())
+    if not compact:
+        return "新的探索"
+    if len(compact) <= 15:
+        return compact
+    return f"{compact[:15]}..."
+
+
+def first_visible_user_message(conn, conversation_id: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT * FROM messages
+        WHERE conversation_id = ?
+          AND branch_id IS NULL
+          AND is_hidden = 0
+          AND role = 'user'
+        ORDER BY created_at, rowid
+        LIMIT 1
+        """,
+        (conversation_id,),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def should_generate_conversation_summary(conn, conversation_id: str) -> bool:
+    row = conn.execute(
+        "SELECT summary FROM conversations WHERE id = ?",
+        (conversation_id,),
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return not (row["summary"] or "").strip()
+
+
+def update_conversation_summary(conn, conversation_id: str, summary: str, *, update_title: bool = True) -> dict[str, Any]:
+    clean = " ".join(summary.strip().split())[:80] or "新的探索"
+    now = utc_now()
+    if update_title:
+        row = conn.execute("SELECT title FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+        should_update_title = row and row["title"] in {"新的平行对话", "New Tangent Chat"}
+    else:
+        should_update_title = False
+    if should_update_title:
+        conn.execute(
+            "UPDATE conversations SET title = ?, summary = ?, updated_at = ? WHERE id = ?",
+            (clean, clean, now, conversation_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE conversations SET summary = ?, updated_at = ? WHERE id = ?",
+            (clean, now, conversation_id),
+        )
+    row = conn.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return row_to_dict(row)
+
+
 def model_context(conn, conversation_id: str) -> list[dict[str, str]]:
     rows = conn.execute(
         """
@@ -390,14 +450,15 @@ def create_branch(
         conn.execute(
             """
             INSERT INTO branches (
-                id, conversation_id, parent_id, base_context_json, selected_text,
+                id, conversation_id, parent_id, parent_thread_id, base_context_json, selected_text,
                 sync_memory, status, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
             """,
             (
                 branch_id,
                 conversation_id,
+                parent_id,
                 parent_id,
                 base_context_json,
                 (selected_text or "").strip()[:4000] or None,

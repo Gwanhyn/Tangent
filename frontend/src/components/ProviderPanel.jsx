@@ -1,5 +1,6 @@
 import { Check, FlaskConical, KeyRound, Pencil, Plus, RotateCcw, Save, Server, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useCopy } from '../i18n';
 import { useChatStore } from '../store/chatStore';
 
 const providerTypes = [
@@ -23,10 +24,19 @@ const defaults = {
 };
 
 export default function ProviderPanel() {
+  const copy = useCopy();
   const {
     providers,
     selectedProviderId,
+    locale,
+    mainPaneColor,
+    branchPaneColor,
+    chatFontSize,
     setSettingsOpen,
+    setLocale,
+    setMainPaneColor,
+    setBranchPaneColor,
+    setChatFontSize,
     createProvider,
     updateProvider,
     refreshProviders,
@@ -88,11 +98,11 @@ export default function ProviderPanel() {
         }
         await updateProvider(editingProviderId, payload);
         resetForm();
-        setNotice('Provider 配置已更新，下一次请求会使用新配置。');
+        setNotice(copy.settings.noticeUpdated);
       } else {
         await createProvider(payload);
         resetForm();
-        setNotice('Provider 已保存，可以发送真实模型请求了。');
+        setNotice(copy.settings.noticeCreated);
       }
     } catch (error) {
       setNotice(error.message);
@@ -106,7 +116,7 @@ export default function ProviderPanel() {
     setNotice('');
     try {
       const result = await testProvider(providerId);
-      setNotice(`连接成功：${result.message}`);
+      setNotice(`${copy.settings.noticeSuccess}: ${result.message}`);
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -119,12 +129,12 @@ export default function ProviderPanel() {
       <div className="settings-panel">
         <header className="settings-header">
           <div>
-            <p className="eyebrow">Provider Manager</p>
-            <h2>{editingProviderId ? '修改模型配置' : '模型池管理'}</h2>
+            <p className="eyebrow">{copy.settings.eyebrow}</p>
+            <h2>{editingProviderId ? copy.settings.titleEdit : copy.settings.titleCreate}</h2>
             <p>
               {editingProviderId
-                ? '正在编辑已有 Provider。API Key 留空会保留原值，填写新 Key 才会替换。'
-                : 'API Key 只保存在本地后端数据库中，前端列表仅显示是否已配置。'}
+                ? copy.settings.descEdit
+                : copy.settings.descCreate}
             </p>
           </div>
           <button className="icon-button" onClick={() => setSettingsOpen(false)} type="button">
@@ -132,13 +142,47 @@ export default function ProviderPanel() {
           </button>
         </header>
 
+        <section className="preference-card">
+          <div className="preference-heading">
+            <strong>{copy.settings.colorMode}</strong>
+            <span>{copy.settings.fontSize}: {chatFontSize}px</span>
+          </div>
+          <div className="preference-grid">
+            <label>
+              {copy.settings.language}
+              <select value={locale} onChange={(event) => setLocale(event.target.value)}>
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              {copy.settings.primaryColor}
+              <input value={mainPaneColor} onChange={(event) => setMainPaneColor(event.target.value)} type="color" />
+            </label>
+            <label>
+              {copy.settings.branchColor}
+              <input value={branchPaneColor} onChange={(event) => setBranchPaneColor(event.target.value)} type="color" />
+            </label>
+            <label>
+              {copy.settings.fontSize}
+              <input
+                value={chatFontSize}
+                min="12"
+                max="18"
+                onChange={(event) => setChatFontSize(event.target.value)}
+                type="range"
+              />
+            </label>
+          </div>
+        </section>
+
         <form className="provider-form" onSubmit={submit}>
           <label>
-            名称
+            {copy.settings.name}
             <input value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="例如：OpenAI 主力" required />
           </label>
           <label>
-            厂商
+            {copy.settings.provider}
             <select value={form.provider_type} onChange={(event) => update('provider_type', event.target.value)}>
               {providerTypes.map((type) => (
                 <option key={type.value} value={type.value}>{type.label}</option>
@@ -147,11 +191,11 @@ export default function ProviderPanel() {
             <span>{selectedType?.hint}</span>
           </label>
           <label>
-            Base URL
+            {copy.settings.baseUrl}
             <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="可选：OpenAI 兼容网关或 Azure endpoint" />
           </label>
           <label>
-            API Key
+            {copy.settings.apiKey}
             <input
               value={form.api_key}
               onChange={(event) => update('api_key', event.target.value)}
@@ -160,7 +204,7 @@ export default function ProviderPanel() {
             />
           </label>
           <label>
-            Model Name
+            {copy.settings.modelName}
             <input value={form.model_name} onChange={(event) => update('model_name', event.target.value)} placeholder="例如：gpt-4.1-mini" required />
           </label>
           <div className="provider-grid">
@@ -175,17 +219,17 @@ export default function ProviderPanel() {
           </div>
           <label className="check-line">
             <input checked={form.is_default} onChange={(event) => update('is_default', event.target.checked)} type="checkbox" />
-            设为默认 Provider
+            {copy.settings.defaultProvider}
           </label>
           <div className="provider-form-actions">
             <button className="primary-wide" disabled={busy} type="submit">
               {editingProviderId ? <Save size={17} /> : <Plus size={17} />}
-              {editingProviderId ? '保存修改' : '添加 Provider'}
+              {editingProviderId ? copy.settings.save : copy.settings.add}
             </button>
             {editingProviderId && (
               <button className="secondary-wide" disabled={busy} onClick={resetForm} type="button">
                 <RotateCcw size={17} />
-                取消编辑
+                {copy.settings.cancelEdit}
               </button>
             )}
           </div>
@@ -197,8 +241,8 @@ export default function ProviderPanel() {
           {providers.length === 0 ? (
             <div className="provider-empty">
               <KeyRound size={26} />
-              <strong>还没有 Provider</strong>
-              <span>添加一个真实 API Key 后，主线和衍生窗口会共用它来调用模型。</span>
+              <strong>{copy.settings.emptyTitle}</strong>
+              <span>{copy.settings.emptyBody}</span>
             </div>
           ) : (
             providers.map((provider) => (
@@ -207,19 +251,19 @@ export default function ProviderPanel() {
                 <div className="provider-copy">
                   <strong>{provider.name}</strong>
                   <span>{provider.provider_type} · {provider.model_name}</span>
-                  <small>{provider.has_api_key ? '已配置 API Key' : '未配置 API Key'}{provider.base_url ? ` · ${provider.base_url}` : ''}</small>
+                  <small>{provider.has_api_key ? copy.settings.configured : copy.settings.missingKey}{provider.base_url ? ` · ${provider.base_url}` : ''}</small>
                 </div>
                 <div className="provider-actions">
-                  <button type="button" onClick={() => startEdit(provider)} title="编辑配置">
+                  <button type="button" onClick={() => startEdit(provider)} title={copy.settings.edit}>
                     <Pencil size={16} />
                   </button>
-                  <button type="button" onClick={() => setDefaultProvider(provider.id)} title="设为当前默认">
+                  <button type="button" onClick={() => setDefaultProvider(provider.id)} title={copy.settings.setDefault}>
                     <Check size={16} />
                   </button>
-                  <button type="button" onClick={() => runTest(provider.id)} title="测试连接">
+                  <button type="button" onClick={() => runTest(provider.id)} title={copy.settings.test}>
                     <FlaskConical size={16} />
                   </button>
-                  <button type="button" onClick={() => deleteProvider(provider.id)} title="删除">
+                  <button type="button" onClick={() => deleteProvider(provider.id)} title={copy.settings.delete}>
                     <Trash2 size={16} />
                   </button>
                 </div>

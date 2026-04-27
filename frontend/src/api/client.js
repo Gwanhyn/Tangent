@@ -82,6 +82,7 @@ export const api = {
   listConversations: () => request('/conversations'),
   createConversation: (payload) => request('/conversations', { method: 'POST', body: JSON.stringify(payload) }),
   getConversation: (id) => request(`/conversations/${id}`),
+  summarizeConversation: (id, payload) => request(`/conversations/${id}/summary`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteConversation: (id) => request(`/conversations/${id}`, { method: 'DELETE' }),
   sendMainMessage: (payload) => request('/chat/main', { method: 'POST', body: JSON.stringify(payload) }),
   streamMainMessage: (payload, options) => streamRequest('/chat/main/stream', payload, options),

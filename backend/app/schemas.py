@@ -48,6 +48,7 @@ class ConversationCreate(BaseModel):
 class ConversationOut(BaseModel):
     id: str
     title: str
+    summary: str | None = None
     created_at: str
     updated_at: str
 
@@ -94,6 +95,7 @@ class BranchOut(BaseModel):
     id: str
     conversation_id: str
     parent_id: str | None
+    parent_thread_id: str | None = None
     selected_text: str | None = None
     memory_summary: str | None = None
     sync_memory: bool
@@ -107,6 +109,7 @@ class BranchMarker(BaseModel):
     id: str
     conversation_id: str
     parent_id: str | None
+    parent_thread_id: str | None = None
     selected_text: str | None = None
     memory_summary: str | None = None
     sync_memory: bool
@@ -125,6 +128,10 @@ class ParallelChatRequest(BaseModel):
 
 class BranchCloseRequest(BaseModel):
     sync_memory: bool
+    provider_id: str | None = None
+
+
+class ConversationSummaryRequest(BaseModel):
     provider_id: str | None = None
 
 

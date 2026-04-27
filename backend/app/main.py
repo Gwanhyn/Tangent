@@ -20,6 +20,7 @@ from .schemas import (
     ChatResponse,
     ConversationCreate,
     ConversationDetail,
+    ConversationSummaryRequest,
     ConversationOut,
     ParallelChatRequest,
     ProviderCreate,
@@ -75,6 +76,50 @@ def summarize_branch_for_memory(branch_id: str, provider_id: str | None) -> str:
         return fallback
 
 
+def summarize_conversation_intent(
+    conversation_id: str,
+    provider_id: str | None,
+    seed_content: str | None = None,
+    provider: dict | None = None,
+) -> dict:
+    with get_connection() as conn:
+        repo.require_conversation(conn, conversation_id)
+        if not repo.should_generate_conversation_summary(conn, conversation_id):
+            return repo.require_conversation(conn, conversation_id)
+        first_user = repo.first_visible_user_message(conn, conversation_id)
+        source = seed_content or (first_user["content"] if first_user else "")
+        fallback = repo.fallback_conversation_summary(source)
+        if provider is None:
+            try:
+                provider = repo.require_provider(conn, provider_id)
+            except HTTPException:
+                provider = None
+
+    summary = fallback
+    if provider and source.strip():
+        try:
+            generated = complete_chat(
+                provider,
+                [
+                    {
+                        "role": "system",
+                        "content": "你是 Tangent 的会话索引器。请把用户首轮意图提炼成 10 到 15 个中文字符或 3 到 6 个英文词。只输出摘要本身，不要引号、编号或解释。",
+                    },
+                    {
+                        "role": "user",
+                        "content": source,
+                    },
+                ],
+                max_tokens_override=48,
+            )
+            summary = " ".join(generated.strip().split())[:40] or fallback
+        except HTTPException:
+            summary = fallback
+
+    with get_connection() as conn:
+        return repo.update_conversation_summary(conn, conversation_id, summary)
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
@@ -128,6 +173,11 @@ def get_conversation(conversation_id: str) -> dict:
     return repo.conversation_detail(conversation_id)
 
 
+@app.post("/api/conversations/{conversation_id}/summary", response_model=ConversationOut)
+def summarize_conversation(conversation_id: str, payload: ConversationSummaryRequest) -> dict:
+    return summarize_conversation_intent(conversation_id, payload.provider_id)
+
+
 @app.delete("/api/conversations/{conversation_id}", status_code=204)
 def delete_conversation(conversation_id: str) -> None:
     repo.delete_conversation(conversation_id)
@@ -171,6 +221,12 @@ def chat_main(payload: ChatRequest) -> dict:
             parent_id=user_message["id"],
         )
         repo.maybe_update_conversation_title(conn, payload.conversation_id, payload.content)
+    summarize_conversation_intent(
+        payload.conversation_id,
+        payload.provider_id,
+        seed_content=payload.content,
+        provider=provider,
+    )
     return {
         "conversation": repo.conversation_detail(payload.conversation_id),
         "assistant": assistant_message,
@@ -182,6 +238,7 @@ def chat_main_stream(payload: ChatRequest) -> StreamingResponse:
     def generate():
         full_content = ""
         assistant_message = None
+        provider = None
         try:
             with get_connection() as conn:
                 repo.require_conversation(conn, payload.conversation_id)
@@ -224,6 +281,12 @@ def chat_main_stream(payload: ChatRequest) -> StreamingResponse:
             with get_connection() as conn:
                 if assistant_message:
                     assistant_message = repo.update_message_content(conn, assistant_message["id"], full_content)
+            summarize_conversation_intent(
+                payload.conversation_id,
+                payload.provider_id,
+                seed_content=payload.content,
+                provider=provider,
+            )
             yield sse_event(
                 "done",
                 {

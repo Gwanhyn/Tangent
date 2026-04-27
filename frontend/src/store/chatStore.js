@@ -5,6 +5,36 @@ let mainAbortController = null;
 let branchAbortController = null;
 let bootstrapPromise = null;
 
+const defaultPreferences = {
+  locale: 'zh',
+  mainPaneColor: '#fff8ec',
+  branchPaneColor: '#142421',
+  chatFontSize: 15,
+};
+
+function readPreference(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  return window.localStorage.getItem(`tangent.${key}`) || fallback;
+}
+
+function writePreference(key, value) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(`tangent.${key}`, String(value));
+}
+
+function readNumberPreference(key, fallback) {
+  const value = Number(readPreference(key, fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function userFacingError(error) {
+  const message = error?.message || String(error || 'Unknown error');
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return '无法连接 Tangent 服务，请确认后端已启动。';
+  }
+  return message;
+}
+
 const initialState = {
   bootstrapping: true,
   providers: [],
@@ -24,6 +54,10 @@ const initialState = {
   mainLoading: false,
   branchLoading: false,
   error: '',
+  locale: readPreference('locale', defaultPreferences.locale),
+  mainPaneColor: readPreference('mainPaneColor', defaultPreferences.mainPaneColor),
+  branchPaneColor: readPreference('branchPaneColor', defaultPreferences.branchPaneColor),
+  chatFontSize: readNumberPreference('chatFontSize', defaultPreferences.chatFontSize),
 };
 
 function chooseProvider(providers, currentId) {
@@ -49,6 +83,10 @@ function optimisticMessage(role, content, scope = 'main') {
     is_hidden: false,
     created_at: new Date().toISOString(),
   };
+}
+
+function defaultConversationTitle(locale) {
+  return locale === 'en' ? 'New Tangent Chat' : '新的平行对话';
 }
 
 async function hydrateConversation(conversationId) {
@@ -87,12 +125,29 @@ function appendDelta(messages, assistantId, delta) {
 export const useChatStore = create((set, get) => ({
   ...initialState,
 
-  setError: (error) => set({ error }),
+  setError: (error) => set({ error: userFacingError(error) }),
   clearError: () => set({ error: '' }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPaneWidth: (paneWidth) => set({ paneWidth: Math.min(66, Math.max(42, paneWidth)) }),
   setSyncMemory: (syncMemory) => set({ syncMemory }),
   setBranchProviderId: (branchProviderId) => set({ branchProviderId }),
+  setLocale: (locale) => {
+    writePreference('locale', locale);
+    set({ locale });
+  },
+  setMainPaneColor: (mainPaneColor) => {
+    writePreference('mainPaneColor', mainPaneColor);
+    set({ mainPaneColor });
+  },
+  setBranchPaneColor: (branchPaneColor) => {
+    writePreference('branchPaneColor', branchPaneColor);
+    set({ branchPaneColor });
+  },
+  setChatFontSize: (chatFontSize) => {
+    const next = Math.min(18, Math.max(12, Number(chatFontSize)));
+    writePreference('chatFontSize', next);
+    set({ chatFontSize: next });
+  },
 
   syncWorkspace: async ({ boot = false } = {}) => {
     if (boot) {
@@ -105,7 +160,7 @@ export const useChatStore = create((set, get) => ({
       ]);
       let nextConversations = conversations;
       if (nextConversations.length === 0) {
-        const created = await api.createConversation({ title: '新的平行对话' });
+        const created = await api.createConversation({ title: defaultConversationTitle(get().locale) });
         nextConversations = [created];
       }
       const state = get();
@@ -136,7 +191,7 @@ export const useChatStore = create((set, get) => ({
         bootstrapping: false,
       });
     } catch (error) {
-      set({ error: error.message, bootstrapping: false });
+      set({ error: userFacingError(error), bootstrapping: false });
     }
   },
 
@@ -211,7 +266,7 @@ export const useChatStore = create((set, get) => ({
   createConversation: async () => {
     set({ error: '' });
     try {
-      const conversation = await api.createConversation({ title: '新的平行对话' });
+      const conversation = await api.createConversation({ title: defaultConversationTitle(get().locale) });
       const conversations = await api.listConversations();
       const detail = await api.getConversation(conversation.id);
       set({
@@ -223,7 +278,7 @@ export const useChatStore = create((set, get) => ({
         syncMemory: false,
       });
     } catch (error) {
-      set({ error: error.message });
+      set({ error: userFacingError(error) });
     }
   },
 
@@ -239,7 +294,7 @@ export const useChatStore = create((set, get) => ({
         syncMemory: branch?.sync_memory || false,
       });
     } catch (error) {
-      set({ error: error.message });
+      set({ error: userFacingError(error) });
     }
   },
 
@@ -249,7 +304,7 @@ export const useChatStore = create((set, get) => ({
       await api.deleteConversation(conversationId);
       let conversations = await api.listConversations();
       if (conversations.length === 0) {
-        const created = await api.createConversation({ title: '新的平行对话' });
+        const created = await api.createConversation({ title: defaultConversationTitle(get().locale) });
         conversations = [created];
       }
       const detail = await api.getConversation(conversations[0].id);
@@ -261,7 +316,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: [],
       });
     } catch (error) {
-      set({ error: error.message });
+      set({ error: userFacingError(error) });
     }
   },
 
@@ -328,7 +383,7 @@ export const useChatStore = create((set, get) => ({
       set({ conversations, mainLoading: false });
     } catch (error) {
       if (error.name !== 'AbortError') {
-        set({ error: error.message });
+        set({ error: userFacingError(error) });
       }
       set({ mainLoading: false });
     } finally {
@@ -365,7 +420,7 @@ export const useChatStore = create((set, get) => ({
         syncMemory: branch.sync_memory,
       });
     } catch (error) {
-      set({ error: error.message });
+      set({ error: userFacingError(error) });
     }
   },
 
@@ -380,7 +435,7 @@ export const useChatStore = create((set, get) => ({
         syncMemory: branch.sync_memory,
       });
     } catch (error) {
-      set({ error: error.message });
+      set({ error: userFacingError(error) });
     }
   },
 
@@ -447,7 +502,7 @@ export const useChatStore = create((set, get) => ({
       set({ branchLoading: false });
     } catch (error) {
       if (error.name !== 'AbortError') {
-        set({ error: error.message });
+        set({ error: userFacingError(error) });
       }
       set({ branchLoading: false });
     } finally {
@@ -487,7 +542,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: [],
       });
     } catch (error) {
-      set({ error: error.message });
+      set({ error: userFacingError(error) });
     }
   },
 }));

@@ -36,6 +36,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS conversations (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
+                summary TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
@@ -44,6 +45,7 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 conversation_id TEXT NOT NULL,
                 parent_id TEXT,
+                parent_thread_id TEXT,
                 base_context_json TEXT NOT NULL,
                 selected_text TEXT,
                 memory_summary TEXT,
@@ -77,6 +79,8 @@ def init_db() -> None:
                 ON branches(conversation_id, status);
             """
         )
+        ensure_column(conn, "conversations", "summary", "TEXT")
+        ensure_column(conn, "branches", "parent_thread_id", "TEXT")
         ensure_column(conn, "branches", "selected_text", "TEXT")
         ensure_column(conn, "branches", "memory_summary", "TEXT")
 
