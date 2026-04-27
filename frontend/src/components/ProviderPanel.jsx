@@ -1,4 +1,4 @@
-import { Check, FlaskConical, KeyRound, Plus, Server, Trash2, X } from 'lucide-react';
+import { Check, FlaskConical, KeyRound, Pencil, Plus, RotateCcw, Save, Server, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 
@@ -28,11 +28,13 @@ export default function ProviderPanel() {
     selectedProviderId,
     setSettingsOpen,
     createProvider,
+    updateProvider,
     setDefaultProvider,
     deleteProvider,
     testProvider,
   } = useChatStore();
   const [form, setForm] = useState(defaults);
+  const [editingProviderId, setEditingProviderId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
@@ -42,6 +44,26 @@ export default function ProviderPanel() {
   );
 
   const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+
+  const resetForm = () => {
+    setForm(defaults);
+    setEditingProviderId(null);
+  };
+
+  const startEdit = (provider) => {
+    setEditingProviderId(provider.id);
+    setNotice('');
+    setForm({
+      name: provider.name,
+      provider_type: provider.provider_type,
+      base_url: provider.base_url || '',
+      api_key: '',
+      model_name: provider.model_name,
+      temperature: provider.temperature,
+      max_tokens: provider.max_tokens,
+      is_default: provider.is_default,
+    });
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -55,9 +77,18 @@ export default function ProviderPanel() {
         temperature: Number(form.temperature),
         max_tokens: Number(form.max_tokens),
       };
-      await createProvider(payload);
-      setForm(defaults);
-      setNotice('Provider 已保存，可以发送真实模型请求了。');
+      if (editingProviderId) {
+        if (!form.api_key.trim()) {
+          delete payload.api_key;
+        }
+        await updateProvider(editingProviderId, payload);
+        resetForm();
+        setNotice('Provider 配置已更新，下一次请求会使用新配置。');
+      } else {
+        await createProvider(payload);
+        resetForm();
+        setNotice('Provider 已保存，可以发送真实模型请求了。');
+      }
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -84,8 +115,12 @@ export default function ProviderPanel() {
         <header className="settings-header">
           <div>
             <p className="eyebrow">Provider Manager</p>
-            <h2>模型池管理</h2>
-            <p>API Key 只保存在本地后端数据库中，前端列表仅显示是否已配置。</p>
+            <h2>{editingProviderId ? '修改模型配置' : '模型池管理'}</h2>
+            <p>
+              {editingProviderId
+                ? '正在编辑已有 Provider。API Key 留空会保留原值，填写新 Key 才会替换。'
+                : 'API Key 只保存在本地后端数据库中，前端列表仅显示是否已配置。'}
+            </p>
           </div>
           <button className="icon-button" onClick={() => setSettingsOpen(false)} type="button">
             <X size={19} />
@@ -112,7 +147,12 @@ export default function ProviderPanel() {
           </label>
           <label>
             API Key
-            <input value={form.api_key} onChange={(event) => update('api_key', event.target.value)} placeholder="sk-..." type="password" />
+            <input
+              value={form.api_key}
+              onChange={(event) => update('api_key', event.target.value)}
+              placeholder={editingProviderId ? '留空表示保留原 API Key' : 'sk-...'}
+              type="password"
+            />
           </label>
           <label>
             Model Name
@@ -132,10 +172,18 @@ export default function ProviderPanel() {
             <input checked={form.is_default} onChange={(event) => update('is_default', event.target.checked)} type="checkbox" />
             设为默认 Provider
           </label>
-          <button className="primary-wide" disabled={busy} type="submit">
-            <Plus size={17} />
-            添加 Provider
-          </button>
+          <div className="provider-form-actions">
+            <button className="primary-wide" disabled={busy} type="submit">
+              {editingProviderId ? <Save size={17} /> : <Plus size={17} />}
+              {editingProviderId ? '保存修改' : '添加 Provider'}
+            </button>
+            {editingProviderId && (
+              <button className="secondary-wide" disabled={busy} onClick={resetForm} type="button">
+                <RotateCcw size={17} />
+                取消编辑
+              </button>
+            )}
+          </div>
         </form>
 
         {notice && <div className="notice">{notice}</div>}
@@ -157,6 +205,9 @@ export default function ProviderPanel() {
                   <small>{provider.has_api_key ? '已配置 API Key' : '未配置 API Key'}{provider.base_url ? ` · ${provider.base_url}` : ''}</small>
                 </div>
                 <div className="provider-actions">
+                  <button type="button" onClick={() => startEdit(provider)} title="编辑配置">
+                    <Pencil size={16} />
+                  </button>
                   <button type="button" onClick={() => setDefaultProvider(provider.id)} title="设为当前默认">
                     <Check size={16} />
                   </button>
@@ -175,4 +226,3 @@ export default function ProviderPanel() {
     </aside>
   );
 }
-

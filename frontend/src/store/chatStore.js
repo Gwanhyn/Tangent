@@ -91,6 +91,16 @@ export const useChatStore = create((set, get) => ({
     return created;
   },
 
+  updateProvider: async (providerId, payload) => {
+    const updated = await api.updateProvider(providerId, payload);
+    const providers = await api.listProviders();
+    set({
+      providers,
+      selectedProviderId: chooseProvider(providers, get().selectedProviderId || updated.id),
+    });
+    return updated;
+  },
+
   setDefaultProvider: async (providerId) => {
     await api.updateProvider(providerId, { is_default: true });
     const providers = await api.listProviders();
@@ -264,4 +274,3 @@ export const useChatStore = create((set, get) => ({
     }
   },
 }));
-

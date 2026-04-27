@@ -127,7 +127,8 @@ button {
 .settings-button,
 .derive-button,
 .send-button,
-.primary-wide {
+.primary-wide,
+.secondary-wide {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +145,8 @@ button {
 .settings-button:hover,
 .derive-button:hover,
 .send-button:hover,
-.primary-wide:hover {
+.primary-wide:hover,
+.secondary-wide:hover {
   transform: translateY(-1px);
   box-shadow: 0 15px 34px rgba(31, 73, 63, 0.25);
 }
@@ -442,7 +444,8 @@ button {
 }
 
 .send-button:disabled,
-.primary-wide:disabled {
+.primary-wide:disabled,
+.secondary-wide:disabled {
   cursor: not-allowed;
   opacity: 0.55;
   transform: none;
@@ -632,8 +635,22 @@ button {
   align-items: center;
 }
 
-.primary-wide {
+.provider-form-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.primary-wide,
+.secondary-wide {
   min-height: 44px;
+}
+
+.secondary-wide {
+  padding: 0 16px;
+  color: #29443b;
+  background: rgba(31, 73, 63, 0.1);
+  box-shadow: none;
 }
 
 .notice {
@@ -809,5 +826,8 @@ button {
   .provider-grid {
     grid-template-columns: 1fr;
   }
-}
 
+  .provider-form-actions {
+    grid-template-columns: 1fr;
+  }
+}
