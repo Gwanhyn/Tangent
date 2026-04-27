@@ -19,8 +19,8 @@ export default function Sidebar() {
           <Waves size={21} />
         </div>
         <div>
-          <strong>AI Parallel Chat</strong>
-          <span>平行衍生交互系统</span>
+          <strong>Tangent</strong>
+          <span>切线式平行衍生系统</span>
         </div>
       </div>
 
@@ -57,4 +57,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-

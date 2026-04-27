@@ -11,7 +11,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 
 class Settings:
-    app_name: str = "AI Parallel Chat"
+    app_name: str = "Tangent"
     db_path: Path = Path(os.getenv("PARALLEL_CHAT_DB", ROOT_DIR / "backend" / "app.db"))
     cors_origins: list[str] = [
         origin.strip()
@@ -25,4 +25,3 @@ class Settings:
 
 
 settings = Settings()
-

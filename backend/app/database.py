@@ -45,6 +45,8 @@ def init_db() -> None:
                 conversation_id TEXT NOT NULL,
                 parent_id TEXT,
                 base_context_json TEXT NOT NULL,
+                selected_text TEXT,
+                memory_summary TEXT,
                 sync_memory INTEGER NOT NULL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'open',
                 created_at TEXT NOT NULL,
@@ -75,4 +77,11 @@ def init_db() -> None:
                 ON branches(conversation_id, status);
             """
         )
+        ensure_column(conn, "branches", "selected_text", "TEXT")
+        ensure_column(conn, "branches", "memory_summary", "TEXT")
 
+
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")

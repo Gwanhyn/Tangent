@@ -12,8 +12,12 @@ export default function App() {
     bootstrapping,
     activeConversation,
     messages,
+    branchMarkers,
     hiddenMemoryCount,
+    providers,
+    branchProviderId,
     isParallelMode,
+    activeBranch,
     branchMessages,
     syncMemory,
     paneWidth,
@@ -22,11 +26,16 @@ export default function App() {
     branchLoading,
     error,
     bootstrap,
+    syncWorkspace,
     clearError,
     setPaneWidth,
+    setBranchProviderId,
     sendMainMessage,
     openBranch,
+    openExistingBranch,
+    stopMainGeneration,
     sendBranchMessage,
+    stopBranchGeneration,
     closeBranch,
     setSyncMemory,
   } = useChatStore();
@@ -34,6 +43,20 @@ export default function App() {
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    const syncWhenVisible = () => {
+      if (!document.hidden) {
+        syncWorkspace();
+      }
+    };
+    window.addEventListener('focus', syncWhenVisible);
+    document.addEventListener('visibilitychange', syncWhenVisible);
+    return () => {
+      window.removeEventListener('focus', syncWhenVisible);
+      document.removeEventListener('visibilitychange', syncWhenVisible);
+    };
+  }, [syncWorkspace]);
 
   const beginResize = (event) => {
     event.preventDefault();
@@ -56,7 +79,7 @@ export default function App() {
     return (
       <main className="boot-screen">
         <Loader2 className="animate-spin" size={28} />
-        <span>正在启动平行对话工作台...</span>
+        <span>正在启动 Tangent 工作台...</span>
       </main>
     );
   }
@@ -76,11 +99,15 @@ export default function App() {
           title={activeConversation?.title || '新的平行对话'}
           subtitle="主线只展示线性对话；已同步的衍生内容会以隐藏记忆参与模型调用。"
           messages={messages}
+          branchMarkers={branchMarkers}
           hiddenMemoryCount={hiddenMemoryCount}
           onSend={sendMainMessage}
+          onEdit={(message, content) => sendMainMessage(content, { replaceFromMessageId: message.id })}
+          onStop={stopMainGeneration}
           loading={mainLoading}
           placeholder="向主线提问，Ctrl/⌘ + Enter 发送"
           onOpenBranch={openBranch}
+          onOpenBranchFromMarker={openExistingBranch}
         />
 
         {isParallelMode && (
@@ -90,10 +117,17 @@ export default function App() {
             </button>
             <ParallelPane
               messages={branchMessages}
+              providers={providers}
+              providerId={branchProviderId}
+              onProviderChange={setBranchProviderId}
+              status={activeBranch?.status}
+              selectedText={activeBranch?.selected_text}
               syncMemory={syncMemory}
               onSyncMemoryChange={setSyncMemory}
               onClose={closeBranch}
               onSend={sendBranchMessage}
+              onEdit={(message, content) => sendBranchMessage(content, { replaceFromMessageId: message.id })}
+              onStop={stopBranchGeneration}
               loading={branchLoading}
             />
           </>
@@ -111,4 +145,3 @@ export default function App() {
     </main>
   );
 }
-

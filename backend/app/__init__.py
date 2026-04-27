@@ -1,2 +1,1 @@
-"""AI Parallel Chat backend package."""
-
+"""Tangent backend package."""

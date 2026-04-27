@@ -1,4 +1,4 @@
-# 项目名称：AI Parallel Chat (平行衍生交互系统)
+# 项目名称：Tangent
 
 ## 1. 核心概念与命名
 * **功能名称**：**平行衍生 (Parallel Derivation)**

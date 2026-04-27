@@ -1,14 +1,20 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
 
+let mainAbortController = null;
+let branchAbortController = null;
+let bootstrapPromise = null;
+
 const initialState = {
   bootstrapping: true,
   providers: [],
   conversations: [],
   activeConversation: null,
   messages: [],
+  branchMarkers: [],
   hiddenMemoryCount: 0,
   selectedProviderId: null,
+  branchProviderId: null,
   isParallelMode: false,
   activeBranch: null,
   branchMessages: [],
@@ -27,6 +33,24 @@ function chooseProvider(providers, currentId) {
   return providers.find((provider) => provider.is_default)?.id || providers[0]?.id || null;
 }
 
+function truncateFromMessage(messages, messageId) {
+  const index = messages.findIndex((message) => message.id === messageId);
+  return index >= 0 ? messages.slice(0, index) : messages;
+}
+
+function optimisticMessage(role, content, scope = 'main') {
+  return {
+    id: `local_${scope}_${role}_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    conversation_id: '',
+    branch_id: scope === 'branch' ? 'local' : null,
+    parent_id: null,
+    role,
+    content,
+    is_hidden: false,
+    created_at: new Date().toISOString(),
+  };
+}
+
 async function hydrateConversation(conversationId) {
   const detail = await api.getConversation(conversationId);
   let branch = null;
@@ -34,6 +58,30 @@ async function hydrateConversation(conversationId) {
     branch = await api.getBranch(detail.open_branch_id);
   }
   return { detail, branch };
+}
+
+function applyConversationDetail(detail) {
+  return {
+    activeConversation: detail.conversation,
+    messages: detail.messages,
+    branchMarkers: detail.branches || [],
+    hiddenMemoryCount: detail.hidden_memory_count,
+  };
+}
+
+function applyConversationDetailSafely(detail, state) {
+  return {
+    ...applyConversationDetail(detail),
+    messages: state.mainLoading ? state.messages : detail.messages,
+  };
+}
+
+function appendDelta(messages, assistantId, delta) {
+  return messages.map((message) => (
+    message.id === assistantId
+      ? { ...message, content: `${message.content || ''}${delta}` }
+      : message
+  ));
 }
 
 export const useChatStore = create((set, get) => ({
@@ -44,9 +92,12 @@ export const useChatStore = create((set, get) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPaneWidth: (paneWidth) => set({ paneWidth: Math.min(66, Math.max(42, paneWidth)) }),
   setSyncMemory: (syncMemory) => set({ syncMemory }),
+  setBranchProviderId: (branchProviderId) => set({ branchProviderId }),
 
-  bootstrap: async () => {
-    set({ bootstrapping: true, error: '' });
+  syncWorkspace: async ({ boot = false } = {}) => {
+    if (boot) {
+      set({ bootstrapping: true, error: '' });
+    }
     try {
       const [providers, conversations] = await Promise.all([
         api.listProviders(),
@@ -57,18 +108,31 @@ export const useChatStore = create((set, get) => ({
         const created = await api.createConversation({ title: '新的平行对话' });
         nextConversations = [created];
       }
-      const { detail, branch } = await hydrateConversation(nextConversations[0].id);
+      const state = get();
+      const activeId = state.activeConversation?.id;
+      const target = nextConversations.find((conversation) => conversation.id === activeId)
+        || nextConversations[0];
+      const selectedProviderId = chooseProvider(providers, state.selectedProviderId);
+      const { detail, branch: openBranch } = await hydrateConversation(target.id);
+      let branch = openBranch;
+      if (state.activeBranch?.id) {
+        try {
+          branch = await api.getBranch(state.activeBranch.id);
+        } catch {
+          branch = openBranch;
+        }
+      }
+      const safeDetail = applyConversationDetailSafely(detail, get());
       set({
         providers,
         conversations: nextConversations,
-        selectedProviderId: chooseProvider(providers, get().selectedProviderId),
-        activeConversation: detail.conversation,
-        messages: detail.messages,
-        hiddenMemoryCount: detail.hidden_memory_count,
+        selectedProviderId,
+        branchProviderId: chooseProvider(providers, state.branchProviderId || selectedProviderId),
+        ...safeDetail,
         isParallelMode: Boolean(branch),
         activeBranch: branch,
-        branchMessages: branch?.messages || [],
-        syncMemory: branch?.sync_memory || false,
+        branchMessages: state.branchLoading ? state.branchMessages : branch?.messages || [],
+        syncMemory: branch?.sync_memory ?? state.syncMemory,
         bootstrapping: false,
       });
     } catch (error) {
@@ -76,9 +140,27 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  bootstrap: async () => {
+    if (bootstrapPromise) {
+      return bootstrapPromise;
+    }
+    bootstrapPromise = (async () => {
+      try {
+        await get().syncWorkspace({ boot: true });
+      } finally {
+        bootstrapPromise = null;
+      }
+    })();
+    return bootstrapPromise;
+  },
+
   refreshProviders: async () => {
     const providers = await api.listProviders();
-    set({ providers, selectedProviderId: chooseProvider(providers, get().selectedProviderId) });
+    set({
+      providers,
+      selectedProviderId: chooseProvider(providers, get().selectedProviderId),
+      branchProviderId: chooseProvider(providers, get().branchProviderId),
+    });
   },
 
   createProvider: async (payload) => {
@@ -87,6 +169,7 @@ export const useChatStore = create((set, get) => ({
     set({
       providers,
       selectedProviderId: chooseProvider(providers, created.id),
+      branchProviderId: chooseProvider(providers, get().branchProviderId || created.id),
     });
     return created;
   },
@@ -97,6 +180,7 @@ export const useChatStore = create((set, get) => ({
     set({
       providers,
       selectedProviderId: chooseProvider(providers, get().selectedProviderId || updated.id),
+      branchProviderId: chooseProvider(providers, get().branchProviderId || updated.id),
     });
     return updated;
   },
@@ -110,7 +194,11 @@ export const useChatStore = create((set, get) => ({
   deleteProvider: async (providerId) => {
     await api.deleteProvider(providerId);
     const providers = await api.listProviders();
-    set({ providers, selectedProviderId: chooseProvider(providers, get().selectedProviderId) });
+    set({
+      providers,
+      selectedProviderId: chooseProvider(providers, get().selectedProviderId),
+      branchProviderId: chooseProvider(providers, get().branchProviderId),
+    });
   },
 
   testProvider: async (providerId) => api.testProvider(providerId),
@@ -128,9 +216,7 @@ export const useChatStore = create((set, get) => ({
       const detail = await api.getConversation(conversation.id);
       set({
         conversations,
-        activeConversation: detail.conversation,
-        messages: detail.messages,
-        hiddenMemoryCount: detail.hidden_memory_count,
+        ...applyConversationDetail(detail),
         isParallelMode: false,
         activeBranch: null,
         branchMessages: [],
@@ -146,9 +232,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const { detail, branch } = await hydrateConversation(conversationId);
       set({
-        activeConversation: detail.conversation,
-        messages: detail.messages,
-        hiddenMemoryCount: detail.hidden_memory_count,
+        ...applyConversationDetail(detail),
         isParallelMode: Boolean(branch),
         activeBranch: branch,
         branchMessages: branch?.messages || [],
@@ -171,9 +255,7 @@ export const useChatStore = create((set, get) => ({
       const detail = await api.getConversation(conversations[0].id);
       set({
         conversations,
-        activeConversation: detail.conversation,
-        messages: detail.messages,
-        hiddenMemoryCount: detail.hidden_memory_count,
+        ...applyConversationDetail(detail),
         isParallelMode: false,
         activeBranch: null,
         branchMessages: [],
@@ -183,42 +265,114 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  sendMainMessage: async (content) => {
-    const { activeConversation, selectedProviderId } = get();
+  sendMainMessage: async (content, options = {}) => {
+    const { activeConversation, selectedProviderId, messages } = get();
     if (!activeConversation || !content.trim()) return;
-    set({ mainLoading: true, error: '' });
+    mainAbortController?.abort();
+    mainAbortController = new AbortController();
+
+    let assistantId = null;
+    const optimisticUser = optimisticMessage('user', content.trim(), 'main');
+    const optimisticAssistant = optimisticMessage('assistant', '', 'main');
+    assistantId = optimisticAssistant.id;
+    const baseMessages = options.replaceFromMessageId
+      ? truncateFromMessage(messages, options.replaceFromMessageId)
+      : messages;
+
+    set({
+      messages: [...baseMessages, optimisticUser, optimisticAssistant],
+      mainLoading: true,
+      error: '',
+    });
+
     try {
-      const response = await api.sendMainMessage({
-        conversation_id: activeConversation.id,
-        provider_id: selectedProviderId,
-        content: content.trim(),
-      });
+      await api.streamMainMessage(
+        {
+          conversation_id: activeConversation.id,
+          provider_id: selectedProviderId,
+          content: content.trim(),
+          replace_from_message_id: options.replaceFromMessageId || null,
+        },
+        {
+          signal: mainAbortController.signal,
+          onEvent: (event) => {
+            if (event.type === 'user') {
+              set((state) => ({
+                messages: state.messages.map((message) => (
+                  message.id === optimisticUser.id ? event.data.message : message
+                )),
+              }));
+            }
+            if (event.type === 'assistant_start') {
+              assistantId = event.data.message.id;
+              set((state) => ({
+                messages: state.messages.map((message) => (
+                  message.id === optimisticAssistant.id ? event.data.message : message
+                )),
+              }));
+            }
+            if (event.type === 'delta') {
+              set((state) => ({
+                messages: appendDelta(state.messages, assistantId, event.data.content),
+              }));
+            }
+            if (event.type === 'done') {
+              set({
+                ...applyConversationDetail(event.data.conversation),
+              });
+            }
+          },
+        },
+      );
       const conversations = await api.listConversations();
-      set({
-        activeConversation: response.conversation.conversation,
-        messages: response.conversation.messages,
-        hiddenMemoryCount: response.conversation.hidden_memory_count,
-        conversations,
-        mainLoading: false,
-      });
+      set({ conversations, mainLoading: false });
     } catch (error) {
-      set({ error: error.message, mainLoading: false });
+      if (error.name !== 'AbortError') {
+        set({ error: error.message });
+      }
+      set({ mainLoading: false });
+    } finally {
+      mainAbortController = null;
     }
   },
 
-  openBranch: async () => {
-    const { activeConversation, activeBranch, syncMemory } = get();
+  stopMainGeneration: () => {
+    mainAbortController?.abort();
+    mainAbortController = null;
+    set({ mainLoading: false });
+  },
+
+  openBranch: async (options = {}) => {
+    const { activeConversation, messages, syncMemory } = get();
     if (!activeConversation) return;
-    if (activeBranch?.status === 'open') {
-      set({ isParallelMode: true });
-      return;
-    }
     set({ error: '' });
     try {
+      const rawParentId = options.parentId || messages[messages.length - 1]?.id || null;
+      const parentId = rawParentId?.startsWith?.('local_') ? null : rawParentId;
       const branch = await api.createBranch({
         conversation_id: activeConversation.id,
+        parent_id: parentId,
         sync_memory: syncMemory,
+        selected_text: options.selectedText || null,
       });
+      const detail = await api.getConversation(activeConversation.id);
+      const safeDetail = applyConversationDetailSafely(detail, get());
+      set({
+        ...safeDetail,
+        isParallelMode: true,
+        activeBranch: branch,
+        branchMessages: branch.messages || [],
+        syncMemory: branch.sync_memory,
+      });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  openExistingBranch: async (branchId) => {
+    set({ error: '' });
+    try {
+      const branch = await api.getBranch(branchId);
       set({
         isParallelMode: true,
         activeBranch: branch,
@@ -230,41 +384,104 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  sendBranchMessage: async (content) => {
-    const { activeBranch, selectedProviderId } = get();
-    if (!activeBranch || !content.trim()) return;
-    set({ branchLoading: true, error: '' });
+  sendBranchMessage: async (content, options = {}) => {
+    const { activeBranch, selectedProviderId, branchProviderId, branchMessages } = get();
+    if (!activeBranch || activeBranch.status !== 'open' || !content.trim()) return;
+    branchAbortController?.abort();
+    branchAbortController = new AbortController();
+
+    let assistantId = null;
+    const optimisticUser = optimisticMessage('user', content.trim(), 'branch');
+    const optimisticAssistant = optimisticMessage('assistant', '', 'branch');
+    assistantId = optimisticAssistant.id;
+    const baseMessages = options.replaceFromMessageId
+      ? truncateFromMessage(branchMessages, options.replaceFromMessageId)
+      : branchMessages;
+
+    set({
+      branchMessages: [...baseMessages, optimisticUser, optimisticAssistant],
+      branchLoading: true,
+      error: '',
+    });
+
     try {
-      const branch = await api.sendParallelMessage({
-        branch_id: activeBranch.id,
-        provider_id: selectedProviderId,
-        content: content.trim(),
-      });
-      set({
-        activeBranch: branch,
-        branchMessages: branch.messages,
-        branchLoading: false,
-      });
+      await api.streamParallelMessage(
+        {
+          branch_id: activeBranch.id,
+          provider_id: branchProviderId || selectedProviderId,
+          content: content.trim(),
+          replace_from_message_id: options.replaceFromMessageId || null,
+        },
+        {
+          signal: branchAbortController.signal,
+          onEvent: (event) => {
+            if (event.type === 'user') {
+              set((state) => ({
+                branchMessages: state.branchMessages.map((message) => (
+                  message.id === optimisticUser.id ? event.data.message : message
+                )),
+              }));
+            }
+            if (event.type === 'assistant_start') {
+              assistantId = event.data.message.id;
+              set((state) => ({
+                branchMessages: state.branchMessages.map((message) => (
+                  message.id === optimisticAssistant.id ? event.data.message : message
+                )),
+              }));
+            }
+            if (event.type === 'delta') {
+              set((state) => ({
+                branchMessages: appendDelta(state.branchMessages, assistantId, event.data.content),
+              }));
+            }
+            if (event.type === 'done') {
+              set({
+                activeBranch: event.data.branch,
+                branchMessages: event.data.branch.messages,
+              });
+            }
+          },
+        },
+      );
+      set({ branchLoading: false });
     } catch (error) {
-      set({ error: error.message, branchLoading: false });
+      if (error.name !== 'AbortError') {
+        set({ error: error.message });
+      }
+      set({ branchLoading: false });
+    } finally {
+      branchAbortController = null;
     }
   },
 
+  stopBranchGeneration: () => {
+    branchAbortController?.abort();
+    branchAbortController = null;
+    set({ branchLoading: false });
+  },
+
   closeBranch: async () => {
-    const { activeBranch, syncMemory } = get();
+    const { activeBranch, syncMemory, branchProviderId, selectedProviderId } = get();
     if (!activeBranch) {
       set({ isParallelMode: false });
       return;
     }
+    if (activeBranch.status !== 'open') {
+      set({ isParallelMode: false, activeBranch: null, branchMessages: [] });
+      return;
+    }
     set({ error: '' });
     try {
-      const detail = await api.closeBranch(activeBranch.id, { sync_memory: syncMemory });
+      const detail = await api.closeBranch(activeBranch.id, {
+        sync_memory: syncMemory,
+        provider_id: branchProviderId || selectedProviderId,
+      });
       const conversations = await api.listConversations();
+      const safeDetail = applyConversationDetailSafely(detail, get());
       set({
         conversations,
-        activeConversation: detail.conversation,
-        messages: detail.messages,
-        hiddenMemoryCount: detail.hidden_memory_count,
+        ...safeDetail,
         isParallelMode: false,
         activeBranch: null,
         branchMessages: [],

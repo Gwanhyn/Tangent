@@ -66,6 +66,7 @@ class MessageOut(BaseModel):
 class ConversationDetail(BaseModel):
     conversation: ConversationOut
     messages: list[MessageOut]
+    branches: list["BranchMarker"] = []
     hidden_memory_count: int
     open_branch_id: str | None = None
 
@@ -74,6 +75,7 @@ class ChatRequest(BaseModel):
     conversation_id: str
     content: str = Field(..., min_length=1)
     provider_id: str | None = None
+    replace_from_message_id: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -85,12 +87,15 @@ class BranchCreate(BaseModel):
     conversation_id: str
     parent_id: str | None = None
     sync_memory: bool = False
+    selected_text: str | None = None
 
 
 class BranchOut(BaseModel):
     id: str
     conversation_id: str
     parent_id: str | None
+    selected_text: str | None = None
+    memory_summary: str | None = None
     sync_memory: bool
     status: Literal["open", "merged", "discarded"]
     created_at: str
@@ -98,17 +103,34 @@ class BranchOut(BaseModel):
     messages: list[MessageOut] = []
 
 
+class BranchMarker(BaseModel):
+    id: str
+    conversation_id: str
+    parent_id: str | None
+    selected_text: str | None = None
+    memory_summary: str | None = None
+    sync_memory: bool
+    status: Literal["open", "merged", "discarded"]
+    message_count: int
+    created_at: str
+    updated_at: str
+
+
 class ParallelChatRequest(BaseModel):
     branch_id: str
     content: str = Field(..., min_length=1)
     provider_id: str | None = None
+    replace_from_message_id: str | None = None
 
 
 class BranchCloseRequest(BaseModel):
     sync_memory: bool
+    provider_id: str | None = None
+
+
+ConversationDetail.model_rebuild()
 
 
 class ProviderTestResponse(BaseModel):
     ok: bool
     message: str
-

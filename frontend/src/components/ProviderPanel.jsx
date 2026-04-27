@@ -1,5 +1,5 @@
 import { Check, FlaskConical, KeyRound, Pencil, Plus, RotateCcw, Save, Server, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 
 const providerTypes = [
@@ -29,6 +29,7 @@ export default function ProviderPanel() {
     setSettingsOpen,
     createProvider,
     updateProvider,
+    refreshProviders,
     setDefaultProvider,
     deleteProvider,
     testProvider,
@@ -42,6 +43,10 @@ export default function ProviderPanel() {
     () => providerTypes.find((item) => item.value === form.provider_type),
     [form.provider_type],
   );
+
+  useEffect(() => {
+    refreshProviders().catch((error) => setNotice(error.message));
+  }, [refreshProviders]);
 
   const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 

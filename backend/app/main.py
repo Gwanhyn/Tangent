@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import repository as repo
 from .config import ROOT_DIR, settings
 from .database import get_connection, init_db
-from .llm import complete_chat, test_provider
+from .llm import complete_chat, stream_chat, test_provider
 from .schemas import (
     BranchCloseRequest,
     BranchCreate,
@@ -36,6 +38,41 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def sse_event(event: str, data: dict) -> str:
+    payload = json.dumps(data, ensure_ascii=False)
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+def summarize_branch_for_memory(branch_id: str, provider_id: str | None) -> str:
+    with get_connection() as conn:
+        branch = repo.require_branch(conn, branch_id)
+        transcript = repo.branch_transcript(conn, branch_id)
+        fallback = repo.fallback_memory_summary(conn, branch_id)
+        try:
+            provider = repo.require_provider(conn, provider_id)
+        except HTTPException:
+            return fallback
+    if not transcript:
+        return fallback
+    try:
+        return complete_chat(
+            provider,
+            [
+                {
+                    "role": "system",
+                    "content": "请将衍生窗口对话提炼成 100 字以内的主线隐藏记忆。只保留对后续回答有用的事实、结论和用户偏好。",
+                },
+                {
+                    "role": "user",
+                    "content": f"衍生窗口上下文：\n{transcript}",
+                },
+            ],
+            max_tokens_override=220,
+        ).strip()[:300]
+    except HTTPException:
+        return fallback
 
 
 @app.on_event("startup")
@@ -100,12 +137,18 @@ def delete_conversation(conversation_id: str) -> None:
 def chat_main(payload: ChatRequest) -> dict:
     with get_connection() as conn:
         repo.require_conversation(conn, payload.conversation_id)
+        if payload.replace_from_message_id:
+            repo.truncate_main_from_message(
+                conn,
+                payload.conversation_id,
+                payload.replace_from_message_id,
+            )
         provider = repo.require_provider(conn, payload.provider_id)
         parent_id = repo.latest_visible_message_id(conn, payload.conversation_id)
         context = [
             {
                 "role": "system",
-                "content": "你是 AI Parallel Chat 的主对话助手。请自然、准确地回答用户，并吸收隐藏记忆中的衍生讨论。",
+                "content": "你是 Tangent 的主对话助手。请自然、准确地回答用户，并吸收隐藏记忆中的衍生讨论。",
             },
             *repo.model_context(conn, payload.conversation_id),
             {"role": "user", "content": payload.content},
@@ -134,9 +177,77 @@ def chat_main(payload: ChatRequest) -> dict:
     }
 
 
+@app.post("/api/chat/main/stream")
+def chat_main_stream(payload: ChatRequest) -> StreamingResponse:
+    def generate():
+        full_content = ""
+        assistant_message = None
+        try:
+            with get_connection() as conn:
+                repo.require_conversation(conn, payload.conversation_id)
+                if payload.replace_from_message_id:
+                    repo.truncate_main_from_message(
+                        conn,
+                        payload.conversation_id,
+                        payload.replace_from_message_id,
+                    )
+                provider = repo.require_provider(conn, payload.provider_id)
+                parent_id = repo.latest_visible_message_id(conn, payload.conversation_id)
+                context = [
+                    {
+                        "role": "system",
+                        "content": "你是 Tangent 的主对话助手。请自然、准确地回答用户，并吸收隐藏记忆中的衍生讨论。",
+                    },
+                    *repo.model_context(conn, payload.conversation_id),
+                    {"role": "user", "content": payload.content},
+                ]
+                user_message = repo.add_message(
+                    conn,
+                    conversation_id=payload.conversation_id,
+                    role="user",
+                    content=payload.content,
+                    parent_id=parent_id,
+                )
+                assistant_message = repo.add_message(
+                    conn,
+                    conversation_id=payload.conversation_id,
+                    role="assistant",
+                    content="",
+                    parent_id=user_message["id"],
+                )
+                repo.maybe_update_conversation_title(conn, payload.conversation_id, payload.content)
+            yield sse_event("user", {"message": user_message})
+            yield sse_event("assistant_start", {"message": assistant_message})
+            for delta in stream_chat(provider, context):
+                full_content += delta
+                yield sse_event("delta", {"content": delta})
+            with get_connection() as conn:
+                if assistant_message:
+                    assistant_message = repo.update_message_content(conn, assistant_message["id"], full_content)
+            yield sse_event(
+                "done",
+                {
+                    "assistant": assistant_message,
+                    "conversation": repo.conversation_detail(payload.conversation_id),
+                },
+            )
+        except Exception as exc:
+            if assistant_message and full_content:
+                with get_connection() as conn:
+                    repo.update_message_content(conn, assistant_message["id"], full_content)
+            yield sse_event("error", {"message": str(exc)})
+
+    return StreamingResponse(generate(), media_type="text/event-stream; charset=utf-8")
+
+
 @app.post("/api/branches", response_model=BranchOut)
 def create_branch(payload: BranchCreate) -> dict:
-    return repo.create_branch(payload.conversation_id, payload.parent_id, payload.sync_memory)
+    return repo.create_branch(
+        payload.conversation_id,
+        payload.parent_id,
+        payload.sync_memory,
+        payload.selected_text,
+    )
 
 
 @app.get("/api/branches/{branch_id}", response_model=BranchOut)
@@ -150,6 +261,8 @@ def chat_parallel(payload: ParallelChatRequest) -> dict:
         branch = repo.require_branch(conn, payload.branch_id)
         if branch["status"] != "open":
             raise HTTPException(status_code=400, detail="Branch is closed")
+        if payload.replace_from_message_id:
+            repo.truncate_branch_from_message(conn, payload.branch_id, payload.replace_from_message_id)
         provider = repo.require_provider(conn, payload.provider_id)
         parent_id = repo.latest_visible_message_id(conn, branch["conversation_id"])
         context = [
@@ -178,9 +291,63 @@ def chat_parallel(payload: ParallelChatRequest) -> dict:
     return repo.branch_detail(payload.branch_id)
 
 
+@app.post("/api/chat/parallel/stream")
+def chat_parallel_stream(payload: ParallelChatRequest) -> StreamingResponse:
+    def generate():
+        full_content = ""
+        assistant_message = None
+        try:
+            with get_connection() as conn:
+                branch = repo.require_branch(conn, payload.branch_id)
+                if branch["status"] != "open":
+                    raise HTTPException(status_code=400, detail="Branch is closed")
+                if payload.replace_from_message_id:
+                    repo.truncate_branch_from_message(conn, payload.branch_id, payload.replace_from_message_id)
+                    branch = repo.require_branch(conn, payload.branch_id)
+                provider = repo.require_provider(conn, payload.provider_id)
+                parent_id = repo.latest_visible_message_id(conn, branch["conversation_id"])
+                context = [
+                    *repo.branch_model_context(conn, branch),
+                    {"role": "user", "content": f"基于左侧讨论的内容，我有以下具体的追问：{payload.content}"},
+                ]
+                user_message = repo.add_message(
+                    conn,
+                    conversation_id=branch["conversation_id"],
+                    branch_id=payload.branch_id,
+                    parent_id=parent_id,
+                    role="user",
+                    content=payload.content,
+                )
+                assistant_message = repo.add_message(
+                    conn,
+                    conversation_id=branch["conversation_id"],
+                    branch_id=payload.branch_id,
+                    parent_id=user_message["id"],
+                    role="assistant",
+                    content="",
+                )
+            yield sse_event("user", {"message": user_message})
+            yield sse_event("assistant_start", {"message": assistant_message})
+            for delta in stream_chat(provider, context):
+                full_content += delta
+                yield sse_event("delta", {"content": delta})
+            with get_connection() as conn:
+                if assistant_message:
+                    repo.update_message_content(conn, assistant_message["id"], full_content)
+            yield sse_event("done", {"branch": repo.branch_detail(payload.branch_id)})
+        except Exception as exc:
+            if assistant_message and full_content:
+                with get_connection() as conn:
+                    repo.update_message_content(conn, assistant_message["id"], full_content)
+            yield sse_event("error", {"message": str(exc)})
+
+    return StreamingResponse(generate(), media_type="text/event-stream; charset=utf-8")
+
+
 @app.post("/api/branches/{branch_id}/close", response_model=ConversationDetail)
 def close_branch(branch_id: str, payload: BranchCloseRequest) -> dict:
-    return repo.close_branch(branch_id, payload.sync_memory)
+    summary = summarize_branch_for_memory(branch_id, payload.provider_id) if payload.sync_memory else None
+    return repo.close_branch(branch_id, payload.sync_memory, summary)
 
 
 frontend_dist = ROOT_DIR / "frontend" / "dist"
