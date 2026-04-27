@@ -55,6 +55,12 @@ export default function MessageBubble({ message, branch, onEdit }) {
 export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact' }) {
   const copy = useCopy();
   const [expanded, setExpanded] = useState(displayMode === 'full');
+  const markerSignature = [
+    marker.id,
+    marker.status,
+    marker.message_count,
+    marker.memory_summary || '',
+  ].join(':');
   const hasMemory = Boolean(marker.memory_summary);
   const compactCount = copy.chat.totalPrefix
     ? `${copy.chat.totalPrefix}${marker.message_count}${copy.chat.branchCount}`
@@ -69,12 +75,17 @@ export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact'
 
   useEffect(() => {
     setExpanded(displayMode === 'full');
-  }, [displayMode]);
+  }, [displayMode, markerSignature]);
 
   if (!isExpanded) {
     return (
       <div className="branch-marker branch-marker-compact">
-        <button className="branch-marker-open" type="button" onClick={() => setExpanded(true)}>
+        <button
+          aria-expanded={false}
+          className="branch-marker-open"
+          type="button"
+          onClick={() => setExpanded(true)}
+        >
           <GitBranch size={14} />
           <span>{compactText}</span>
         </button>
@@ -84,9 +95,14 @@ export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact'
 
   return (
     <div className={`branch-marker branch-marker-expanded ${hasMemory ? 'branch-marker-memory' : ''}`}>
-      <button className="branch-marker-open" type="button" onClick={() => onOpen(marker.id)}>
+      <button
+        aria-expanded={isExpanded}
+        className="branch-marker-open"
+        type="button"
+        onClick={() => onOpen(marker.id)}
+      >
         <GitBranch size={15} />
-        <span>{detailText}</span>
+        <span title={detailText}>{detailText}</span>
       </button>
       {displayMode === 'compact' && (
         <button
@@ -115,19 +131,32 @@ export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact'
 export function BranchMarkerGroup({ markers, onOpen, onDelete, displayMode = 'compact' }) {
   const copy = useCopy();
   const [expanded, setExpanded] = useState(displayMode === 'full');
-  const totalCount = markers.reduce((sum, marker) => sum + Number(marker.message_count || 0), 0);
+  const markerSignature = markers
+    .map((marker) => [
+      marker.id,
+      marker.status,
+      marker.message_count,
+      marker.memory_summary || '',
+    ].join(':'))
+    .join('|');
+  const branchCount = markers.length;
   const compactText = copy.chat.totalPrefix
-    ? `${copy.chat.totalPrefix}${totalCount}${copy.chat.branchCount}`
-    : `${totalCount} ${copy.chat.branchCount}`;
+    ? `${copy.chat.totalPrefix}${branchCount}${copy.chat.branchUnit}`
+    : `${branchCount} ${copy.chat.branchUnit}`;
 
   useEffect(() => {
     setExpanded(displayMode === 'full');
-  }, [displayMode]);
+  }, [displayMode, markerSignature]);
 
   if (displayMode === 'compact' && !expanded) {
     return (
       <div className="branch-marker branch-marker-compact branch-marker-group">
-        <button className="branch-marker-open" type="button" onClick={() => setExpanded(true)}>
+        <button
+          aria-expanded={false}
+          className="branch-marker-open"
+          type="button"
+          onClick={() => setExpanded(true)}
+        >
           <GitBranch size={13} />
           <span>{compactText}</span>
         </button>

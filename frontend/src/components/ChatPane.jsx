@@ -88,9 +88,18 @@ export default function ChatPane({
 
   const renderBranchMarkers = (markers = []) => {
     if (markers.length === 0) return null;
+    const markerSignature = markers
+      .map((marker) => [
+        marker.id,
+        marker.status,
+        marker.message_count,
+        marker.memory_summary || '',
+      ].join(':'))
+      .join('|');
     if (branchMarkerMode === 'compact') {
       return (
         <BranchMarkerGroup
+          key={`branch-group-${markerSignature}`}
           markers={markers}
           onOpen={onOpenBranchFromMarker}
           onDelete={onDeleteBranch}
@@ -100,7 +109,7 @@ export default function ChatPane({
     }
     return markers.map((marker) => (
       <BranchMarker
-        key={marker.id}
+        key={`${marker.id}:${marker.status}:${marker.message_count}:${marker.memory_summary || ''}`}
         marker={marker}
         onOpen={onOpenBranchFromMarker}
         onDelete={onDeleteBranch}

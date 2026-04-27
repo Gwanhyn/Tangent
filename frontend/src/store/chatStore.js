@@ -165,7 +165,15 @@ export const useChatStore = create((set, get) => ({
 
   syncWorkspace: async ({ boot = false } = {}) => {
     if (boot) {
-      set({ bootstrapping: true, error: '' });
+      set({
+        bootstrapping: true,
+        error: '',
+        activeConversation: null,
+        messages: [],
+        branchMarkers: [],
+        activeBranch: null,
+        branchMessages: [],
+      });
     }
     try {
       const [providers, conversations] = await Promise.all([
@@ -182,7 +190,22 @@ export const useChatStore = create((set, get) => ({
       const target = nextConversations.find((conversation) => conversation.id === activeId)
         || nextConversations[0];
       const selectedProviderId = chooseProvider(providers, state.selectedProviderId);
-      const { detail, branch: openBranch } = await hydrateConversation(target.id);
+      let detail = null;
+      let openBranch = null;
+      try {
+        const hydrated = await hydrateConversation(target.id);
+        detail = hydrated.detail;
+        openBranch = hydrated.branch;
+      } catch (error) {
+        if (!boot) {
+          throw error;
+        }
+        const created = await api.createConversation({ title: defaultConversationTitle(get().locale) });
+        nextConversations = [created, ...nextConversations.filter((conversation) => conversation.id !== created.id)];
+        const hydrated = await hydrateConversation(created.id);
+        detail = hydrated.detail;
+        openBranch = hydrated.branch;
+      }
       let branch = openBranch;
       if (state.activeBranch?.id) {
         try {
@@ -205,7 +228,7 @@ export const useChatStore = create((set, get) => ({
         bootstrapping: false,
       });
     } catch (error) {
-      set({ error: userFacingError(error), bootstrapping: false });
+      set({ error: userFacingError(error), bootstrapping: boot });
     }
   },
 

@@ -1,6 +1,8 @@
 {
   "app": {
-    "booting": "正在启动 Tangent 工作台..."
+    "booting": "正在启动 Tangent 工作台...",
+    "retry": "重新加载",
+    "resizePane": "拖拽调整分栏宽度"
   },
   "sidebar": {
     "version": "v1.0",
@@ -24,7 +26,7 @@
     "emptyBranchBody": "右侧分支会继承左侧快照。关闭时，你可以选择知识集成，或保持纯净快照不影响主线程。",
     "typing": "模型正在生成...",
     "selectionBranch": "基于选区衍生",
-    "stop": "Stop Generating",
+    "stop": "停止生成",
     "composer": "Message Tangent...",
     "composerEnter": "Message Tangent... (Enter 发送，Shift + Enter 换行)",
     "composerCtrl": "Message Tangent... (Ctrl + Enter 发送)",
@@ -41,10 +43,13 @@
     "branchMerged": "已知识集成",
     "branchDiscarded": "纯净快照",
     "branchCount": "条追问",
+    "branchUnit": "个分支",
     "totalPrefix": "共",
     "hasMemory": "记忆",
     "collapseBranch": "收起",
-    "deleteBranch": "删除衍生分支"
+    "deleteBranch": "删除衍生分支",
+    "copy": "复制",
+    "copied": "已复制"
   },
   "parallel": {
     "toolbarEyebrow": "Branch Mode",

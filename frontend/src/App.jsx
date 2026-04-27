@@ -57,9 +57,10 @@ export default function App() {
 
   useEffect(() => {
     if (!error) return undefined;
+    if (bootstrapping) return undefined;
     const timer = window.setTimeout(clearError, 3000);
     return () => window.clearTimeout(timer);
-  }, [error, clearError]);
+  }, [error, bootstrapping, clearError]);
 
   useEffect(() => {
     const syncWhenVisible = () => {
@@ -97,6 +98,14 @@ export default function App() {
       <main className="boot-screen">
         <Loader2 className="animate-spin" size={28} />
         <span>{copy.app.booting}</span>
+        {error && (
+          <>
+            <small>{error}</small>
+            <button type="button" onClick={() => bootstrap()}>
+              {copy.app.retry}
+            </button>
+          </>
+        )}
       </main>
     );
   }
@@ -142,7 +151,7 @@ export default function App() {
 
         {isParallelMode && (
           <>
-            <button className="resize-rail" onPointerDown={beginResize} type="button" aria-label="拖拽调整分栏宽度">
+            <button className="resize-rail" onPointerDown={beginResize} type="button" aria-label={copy.app.resizePane}>
               <GripVertical size={20} />
             </button>
             <ParallelPane

@@ -14,8 +14,10 @@ import ReactMarkdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { useCopy } from '../i18n';
 
 function CodeBlock({ className = '', children }) {
+  const copyText = useCopy();
   const [copied, setCopied] = useState(false);
   const language = /language-(\w+)/.exec(className)?.[1] || 'text';
   const raw = String(children || '').replace(/\n$/, '');
@@ -34,7 +36,7 @@ function CodeBlock({ className = '', children }) {
         <span>{language}</span>
         <button type="button" onClick={copy}>
           {copied ? <Check size={14} /> : <Clipboard size={14} />}
-          {copied ? '已复制' : '复制'}
+          {copied ? copyText.chat.copied : copyText.chat.copy}
         </button>
       </div>
       <pre>
