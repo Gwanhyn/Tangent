@@ -2,6 +2,7 @@ import { AlertTriangle, GripVertical, Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import ChatPane from './components/ChatPane';
 import ParallelPane from './components/ParallelPane';
+import PreferencesPanel from './components/PreferencesPanel';
 import ProviderPanel from './components/ProviderPanel';
 import Sidebar from './components/Sidebar';
 import { useCopy } from './i18n';
@@ -24,12 +25,15 @@ export default function App() {
     syncMemory,
     paneWidth,
     settingsOpen,
+    enginesOpen,
     mainLoading,
     branchLoading,
     error,
     mainPaneColor,
     branchPaneColor,
     chatFontSize,
+    sendShortcut,
+    branchMarkerMode,
     bootstrap,
     syncWorkspace,
     clearError,
@@ -38,9 +42,11 @@ export default function App() {
     sendMainMessage,
     openBranch,
     openExistingBranch,
+    deleteBranch,
     stopMainGeneration,
     sendBranchMessage,
     stopBranchGeneration,
+    createNextBranch,
     closeBranch,
     setSyncMemory,
   } = useChatStore();
@@ -95,6 +101,10 @@ export default function App() {
     );
   }
 
+  const composerPlaceholder = sendShortcut === 'ctrlEnter'
+    ? copy.chat.composerCtrl
+    : copy.chat.composerEnter;
+
   return (
     <main className="app-shell">
       <div className="ambient ambient-one" />
@@ -121,9 +131,13 @@ export default function App() {
           onEdit={(message, content) => sendMainMessage(content, { replaceFromMessageId: message.id })}
           onStop={stopMainGeneration}
           loading={mainLoading}
-          placeholder={copy.chat.composer}
+          placeholder={composerPlaceholder}
           onOpenBranch={openBranch}
+          showBranchButton={!isParallelMode}
           onOpenBranchFromMarker={openExistingBranch}
+          onDeleteBranch={deleteBranch}
+          branchMarkerMode={branchMarkerMode}
+          sendShortcut={sendShortcut}
         />
 
         {isParallelMode && (
@@ -140,17 +154,22 @@ export default function App() {
               selectedText={activeBranch?.selected_text}
               syncMemory={syncMemory}
               onSyncMemoryChange={setSyncMemory}
+              onNewBranch={createNextBranch}
+              onDelete={() => deleteBranch(activeBranch?.id)}
               onClose={closeBranch}
               onSend={sendBranchMessage}
               onEdit={(message, content) => sendBranchMessage(content, { replaceFromMessageId: message.id })}
               onStop={stopBranchGeneration}
               loading={branchLoading}
+              sendShortcut={sendShortcut}
+              placeholder={composerPlaceholder}
             />
           </>
         )}
       </section>
 
-      {settingsOpen && <ProviderPanel />}
+      {settingsOpen && <PreferencesPanel />}
+      {enginesOpen && <ProviderPanel />}
 
       {error && (
         <button className="error-toast" onClick={clearError} type="button">

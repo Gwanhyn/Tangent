@@ -10,6 +10,8 @@ const defaultPreferences = {
   mainPaneColor: '#fff8ec',
   branchPaneColor: '#142421',
   chatFontSize: 15,
+  sendShortcut: 'enter',
+  branchMarkerMode: 'compact',
 };
 
 function readPreference(key, fallback) {
@@ -51,6 +53,7 @@ const initialState = {
   syncMemory: false,
   paneWidth: 56,
   settingsOpen: false,
+  enginesOpen: false,
   mainLoading: false,
   branchLoading: false,
   error: '',
@@ -58,6 +61,8 @@ const initialState = {
   mainPaneColor: readPreference('mainPaneColor', defaultPreferences.mainPaneColor),
   branchPaneColor: readPreference('branchPaneColor', defaultPreferences.branchPaneColor),
   chatFontSize: readNumberPreference('chatFontSize', defaultPreferences.chatFontSize),
+  sendShortcut: readPreference('sendShortcut', defaultPreferences.sendShortcut),
+  branchMarkerMode: readPreference('branchMarkerMode', defaultPreferences.branchMarkerMode),
 };
 
 function chooseProvider(providers, currentId) {
@@ -128,6 +133,7 @@ export const useChatStore = create((set, get) => ({
   setError: (error) => set({ error: userFacingError(error) }),
   clearError: () => set({ error: '' }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setEnginesOpen: (enginesOpen) => set({ enginesOpen }),
   setPaneWidth: (paneWidth) => set({ paneWidth: Math.min(66, Math.max(42, paneWidth)) }),
   setSyncMemory: (syncMemory) => set({ syncMemory }),
   setBranchProviderId: (branchProviderId) => set({ branchProviderId }),
@@ -147,6 +153,14 @@ export const useChatStore = create((set, get) => ({
     const next = Math.min(18, Math.max(12, Number(chatFontSize)));
     writePreference('chatFontSize', next);
     set({ chatFontSize: next });
+  },
+  setSendShortcut: (sendShortcut) => {
+    writePreference('sendShortcut', sendShortcut);
+    set({ sendShortcut });
+  },
+  setBranchMarkerMode: (branchMarkerMode) => {
+    writePreference('branchMarkerMode', branchMarkerMode);
+    set({ branchMarkerMode });
   },
 
   syncWorkspace: async ({ boot = false } = {}) => {
@@ -424,6 +438,46 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  createNextBranch: async () => {
+    const {
+      activeBranch,
+      activeConversation,
+      syncMemory,
+      branchProviderId,
+      selectedProviderId,
+    } = get();
+    if (!activeConversation) return;
+    set({ error: '' });
+    try {
+      let detail = null;
+      if (activeBranch?.status === 'open') {
+        detail = await api.closeBranch(activeBranch.id, {
+          sync_memory: syncMemory,
+          provider_id: branchProviderId || selectedProviderId,
+        });
+      }
+      const branch = await api.createBranch({
+        conversation_id: activeConversation.id,
+        parent_id: null,
+        sync_memory: syncMemory,
+        selected_text: null,
+      });
+      const nextDetail = detail || await api.getConversation(activeConversation.id);
+      const safeDetail = applyConversationDetailSafely(nextDetail, get());
+      const conversations = await api.listConversations();
+      set({
+        conversations,
+        ...safeDetail,
+        isParallelMode: true,
+        activeBranch: branch,
+        branchMessages: [],
+        syncMemory: branch.sync_memory,
+      });
+    } catch (error) {
+      set({ error: userFacingError(error) });
+    }
+  },
+
   openExistingBranch: async (branchId) => {
     set({ error: '' });
     try {
@@ -433,6 +487,27 @@ export const useChatStore = create((set, get) => ({
         activeBranch: branch,
         branchMessages: branch.messages || [],
         syncMemory: branch.sync_memory,
+      });
+    } catch (error) {
+      set({ error: userFacingError(error) });
+    }
+  },
+
+  deleteBranch: async (branchId) => {
+    const { activeBranch } = get();
+    if (!branchId) return;
+    set({ error: '' });
+    try {
+      const detail = await api.deleteBranch(branchId);
+      const conversations = await api.listConversations();
+      const safeDetail = applyConversationDetailSafely(detail, get());
+      const isDeletingActive = activeBranch?.id === branchId;
+      set({
+        conversations,
+        ...safeDetail,
+        isParallelMode: isDeletingActive ? false : get().isParallelMode,
+        activeBranch: isDeletingActive ? null : get().activeBranch,
+        branchMessages: isDeletingActive ? [] : get().branchMessages,
       });
     } catch (error) {
       set({ error: userFacingError(error) });

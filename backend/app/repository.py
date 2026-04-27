@@ -199,26 +199,44 @@ def get_open_branch_id(conn, conversation_id: str) -> str | None:
     return row["id"] if row else None
 
 
+def cleanup_empty_closed_branches(conn, conversation_id: str) -> None:
+    conn.execute(
+        """
+        DELETE FROM branches
+        WHERE conversation_id = ?
+          AND status != 'open'
+          AND id NOT IN (
+              SELECT DISTINCT branch_id FROM messages
+              WHERE branch_id IS NOT NULL AND role = 'user' AND is_hidden = 0
+          )
+        """,
+        (conversation_id,),
+    )
+
+
 def list_branch_markers(conn, conversation_id: str) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT
-            b.id,
-            b.conversation_id,
-            b.parent_id,
-            b.parent_thread_id,
-            b.selected_text,
-            b.memory_summary,
-            b.sync_memory,
-            b.status,
-            b.created_at,
-            b.updated_at,
-            COUNT(m.id) AS message_count
-        FROM branches b
-        LEFT JOIN messages m ON m.branch_id = b.id AND m.role != 'system'
-        WHERE b.conversation_id = ?
-        GROUP BY b.id
-        ORDER BY b.created_at, b.rowid
+        SELECT * FROM (
+            SELECT
+                b.id,
+                b.conversation_id,
+                b.parent_id,
+                b.parent_thread_id,
+                b.selected_text,
+                b.memory_summary,
+                b.sync_memory,
+                b.status,
+                b.created_at,
+                b.updated_at,
+                COALESCE(SUM(CASE WHEN m.role = 'user' AND m.is_hidden = 0 THEN 1 ELSE 0 END), 0) AS message_count
+            FROM branches b
+            LEFT JOIN messages m ON m.branch_id = b.id
+            WHERE b.conversation_id = ?
+            GROUP BY b.id
+        )
+        WHERE message_count > 0
+        ORDER BY created_at
         """,
         (conversation_id,),
     ).fetchall()
@@ -228,6 +246,7 @@ def list_branch_markers(conn, conversation_id: str) -> list[dict[str, Any]]:
 def conversation_detail(conversation_id: str) -> dict[str, Any]:
     with get_connection() as conn:
         conversation = require_conversation(conn, conversation_id)
+        cleanup_empty_closed_branches(conn, conversation_id)
         return {
             "conversation": conversation,
             "messages": list_visible_messages(conn, conversation_id),
@@ -540,6 +559,16 @@ def branch_transcript(conn, branch_id: str) -> str:
     return "\n".join(f"{row['role']}: {row['content']}" for row in rows).strip()
 
 
+def count_branch_user_messages(conn, branch_id: str) -> int:
+    return conn.execute(
+        """
+        SELECT COUNT(*) FROM messages
+        WHERE branch_id = ? AND role = 'user' AND is_hidden = 0
+        """,
+        (branch_id,),
+    ).fetchone()[0]
+
+
 def fallback_memory_summary(conn, branch_id: str) -> str:
     transcript = branch_transcript(conn, branch_id)
     if not transcript:
@@ -550,36 +579,62 @@ def fallback_memory_summary(conn, branch_id: str) -> str:
 
 def close_branch(branch_id: str, sync_memory: bool, memory_summary: str | None = None) -> dict[str, Any]:
     now = utc_now()
+    deleted_empty_conversation_id = None
     with get_connection() as conn:
         branch = require_branch(conn, branch_id)
         if branch["status"] != "open":
             raise HTTPException(status_code=400, detail="Branch is already closed")
-        summary = (memory_summary or "").strip() if sync_memory else None
-        if sync_memory:
-            if not summary:
-                summary = fallback_memory_summary(conn, branch_id)
-            add_message(
-                conn,
-                conversation_id=branch["conversation_id"],
-                branch_id=branch_id,
-                role="system",
-                content=f"衍生记忆摘要：{summary}",
-                parent_id=branch["parent_id"],
-                is_hidden=True,
+        if count_branch_user_messages(conn, branch_id) == 0:
+            conversation_id = branch["conversation_id"]
+            conn.execute("DELETE FROM branches WHERE id = ?", (branch_id,))
+            conn.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (now, conversation_id),
             )
-            status = "merged"
-        else:
-            status = "discarded"
-        conn.execute(
-            """
-            UPDATE branches
-            SET sync_memory = ?, memory_summary = ?, status = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (int(sync_memory), summary, status, now, branch_id),
-        )
+            deleted_empty_conversation_id = conversation_id
+            branch = None
+        if not deleted_empty_conversation_id:
+            summary = (memory_summary or "").strip() if sync_memory else None
+            if sync_memory:
+                if not summary:
+                    summary = fallback_memory_summary(conn, branch_id)
+                add_message(
+                    conn,
+                    conversation_id=branch["conversation_id"],
+                    branch_id=branch_id,
+                    role="system",
+                    content=f"衍生记忆摘要：{summary}",
+                    parent_id=branch["parent_id"],
+                    is_hidden=True,
+                )
+                status = "merged"
+            else:
+                status = "discarded"
+            conn.execute(
+                """
+                UPDATE branches
+                SET sync_memory = ?, memory_summary = ?, status = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (int(sync_memory), summary, status, now, branch_id),
+            )
+            conn.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (now, branch["conversation_id"]),
+            )
+    if deleted_empty_conversation_id:
+        return conversation_detail(deleted_empty_conversation_id)
+    return conversation_detail(branch["conversation_id"])
+
+
+def delete_branch(branch_id: str) -> dict[str, Any]:
+    now = utc_now()
+    with get_connection() as conn:
+        branch = require_branch(conn, branch_id)
+        conversation_id = branch["conversation_id"]
+        conn.execute("DELETE FROM branches WHERE id = ?", (branch_id,))
         conn.execute(
             "UPDATE conversations SET updated_at = ? WHERE id = ?",
-            (now, branch["conversation_id"]),
+            (now, conversation_id),
         )
-    return conversation_detail(branch["conversation_id"])
+    return conversation_detail(conversation_id)

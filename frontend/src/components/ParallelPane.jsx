@@ -1,5 +1,6 @@
-import { Brain, CheckCircle2, GitBranch, ShieldOff, X } from 'lucide-react';
+import { Brain, Plus, ShieldOff, Trash2, X } from 'lucide-react';
 import ChatPane from './ChatPane';
+import PrettySelect from './PrettySelect';
 import { useCopy } from '../i18n';
 
 export default function ParallelPane({
@@ -11,11 +12,15 @@ export default function ParallelPane({
   selectedText,
   syncMemory,
   onSyncMemoryChange,
+  onNewBranch,
+  onDelete,
   onClose,
   onSend,
   onEdit,
   onStop,
   loading,
+  sendShortcut,
+  placeholder,
 }) {
   const copy = useCopy();
   const readOnly = status && status !== 'open';
@@ -33,20 +38,17 @@ export default function ParallelPane({
           <h3>{readOnly ? copy.parallel.snapshotTitle : copy.parallel.openTitle}</h3>
         </div>
         <div className="parallel-toolbar-actions">
-          <label className="parallel-model">
-            <span>{copy.parallel.model}</span>
-            <select
-              value={providerId || ''}
-              disabled={readOnly}
-              onChange={(event) => onProviderChange(event.target.value)}
-            >
-              {providers.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name} · {provider.model_name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <PrettySelect
+            className="parallel-model"
+            disabled={readOnly || providers.length === 0}
+            value={providerId || providers[0]?.id || ''}
+            onChange={onProviderChange}
+            options={providers.map((provider) => ({
+              value: provider.id,
+              label: provider.name,
+              description: provider.model_name,
+            }))}
+          />
           <button
             className={`branch-tool-button ${syncMemory ? 'active' : ''}`}
             disabled={readOnly}
@@ -57,8 +59,23 @@ export default function ParallelPane({
             {syncMemory ? <Brain size={17} /> : <ShieldOff size={17} />}
             <span className="sr-only">{syncMemory ? copy.parallel.memoryOn : copy.parallel.memoryOff}</span>
           </button>
-          <button className="branch-tool-button active" disabled type="button" title={copy.parallel.toolbarEyebrow}>
-            <GitBranch size={17} />
+          <button
+            className="branch-tool-button"
+            disabled={loading}
+            onClick={onNewBranch}
+            type="button"
+            title={copy.parallel.newBranch}
+          >
+            <Plus size={17} />
+          </button>
+          <button
+            className="branch-tool-button danger"
+            disabled={loading}
+            onClick={onDelete}
+            type="button"
+            title={copy.parallel.deleteBranch}
+          >
+            <Trash2 size={17} />
           </button>
           <button className="icon-button" onClick={onClose} type="button" title={copy.parallel.close}>
             <X size={18} />
@@ -66,21 +83,14 @@ export default function ParallelPane({
         </div>
       </div>
 
-      <div className="parallel-controls">
-        <div className={`sync-card sync-compact ${syncMemory ? 'sync-on' : ''} ${readOnly ? 'sync-disabled' : ''}`}>
-          <div className="sync-icon">
-            {syncMemory ? <CheckCircle2 size={18} /> : <ShieldOff size={18} />}
-          </div>
-          <span>{memoryTitle}</span>
-        </div>
-
-        {selectedText && (
+      {selectedText && (
+        <div className="parallel-controls">
           <div className="selected-context">
             <strong>{copy.parallel.selectedContext}</strong>
             <span>{selectedText}</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="parallel-chat-slot">
         <ChatPane
@@ -93,7 +103,8 @@ export default function ParallelPane({
           onStop={onStop}
           loading={loading}
           disabled={readOnly}
-          placeholder={copy.chat.composer}
+          placeholder={placeholder}
+          sendShortcut={sendShortcut}
         />
       </div>
     </section>

@@ -318,6 +318,11 @@ def get_branch(branch_id: str) -> dict:
     return repo.branch_detail(branch_id)
 
 
+@app.delete("/api/branches/{branch_id}", response_model=ConversationDetail)
+def delete_branch(branch_id: str) -> dict:
+    return repo.delete_branch(branch_id)
+
+
 @app.post("/api/chat/parallel", response_model=BranchOut)
 def chat_parallel(payload: ParallelChatRequest) -> dict:
     with get_connection() as conn:

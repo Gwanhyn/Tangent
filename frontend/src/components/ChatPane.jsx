@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { GitBranchPlus, Loader2, MemoryStick, Octagon, Sparkles } from 'lucide-react';
 import Composer from './Composer';
 import ContextTimeline from './ContextTimeline';
-import MessageBubble, { BranchMarker } from './MessageBubble';
+import MessageBubble, { BranchMarker, BranchMarkerGroup } from './MessageBubble';
 import { useCopy } from '../i18n';
 
 export default function ChatPane({
@@ -19,7 +19,11 @@ export default function ChatPane({
   branch = false,
   hiddenMemoryCount = 0,
   onOpenBranch,
+  showBranchButton = Boolean(onOpenBranch),
   onOpenBranchFromMarker,
+  onDeleteBranch,
+  branchMarkerMode = 'compact',
+  sendShortcut = 'enter',
 }) {
   const copy = useCopy();
   const listRef = useRef(null);
@@ -82,6 +86,29 @@ export default function ChatPane({
     row?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const renderBranchMarkers = (markers = []) => {
+    if (markers.length === 0) return null;
+    if (branchMarkerMode === 'compact') {
+      return (
+        <BranchMarkerGroup
+          markers={markers}
+          onOpen={onOpenBranchFromMarker}
+          onDelete={onDeleteBranch}
+          displayMode={branchMarkerMode}
+        />
+      );
+    }
+    return markers.map((marker) => (
+      <BranchMarker
+        key={marker.id}
+        marker={marker}
+        onOpen={onOpenBranchFromMarker}
+        onDelete={onDeleteBranch}
+        displayMode={branchMarkerMode}
+      />
+    ));
+  };
+
   return (
     <section className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'}`}>
       <header className="pane-header">
@@ -98,15 +125,17 @@ export default function ChatPane({
                 {hiddenMemoryCount} {copy.chat.hiddenMemory}
               </span>
             )}
-            <button className="derive-button" onClick={() => onOpenBranch?.()} type="button">
-              <GitBranchPlus size={17} />
-              {copy.chat.branchOut}
-            </button>
+            {showBranchButton && onOpenBranch && (
+              <button className="derive-button" onClick={() => onOpenBranch()} type="button">
+                <GitBranchPlus size={17} />
+                {copy.chat.branchOut}
+              </button>
+            )}
           </div>
         )}
       </header>
 
-      <ContextTimeline messages={messages} label={copy.chat.timeline} onJump={jumpToMessage} />
+      <ContextTimeline messages={messages} label={copy.chat.timeline} listRef={listRef} onJump={jumpToMessage} />
 
       <div
         ref={listRef}
@@ -130,15 +159,11 @@ export default function ChatPane({
           messages.map((message) => (
             <Fragment key={message.id}>
               <MessageBubble message={message} branch={branch} onEdit={onEdit} />
-              {!branch && markersByParent.get(message.id)?.map((marker) => (
-                <BranchMarker key={marker.id} marker={marker} onOpen={onOpenBranchFromMarker} />
-              ))}
+              {!branch && renderBranchMarkers(markersByParent.get(message.id))}
             </Fragment>
           ))
         )}
-        {!branch && markersByParent.get('__root__')?.map((marker) => (
-          <BranchMarker key={marker.id} marker={marker} onOpen={onOpenBranchFromMarker} />
-        ))}
+        {!branch && renderBranchMarkers(markersByParent.get('__root__'))}
         {loading && (
           <div className="typing-card">
             <Loader2 className="animate-spin" size={16} />
@@ -173,6 +198,7 @@ export default function ChatPane({
           placeholder={placeholder}
           sendLabel={copy.chat.send}
           generatingLabel={copy.chat.generating}
+          sendShortcut={sendShortcut}
         />
       </div>
     </section>

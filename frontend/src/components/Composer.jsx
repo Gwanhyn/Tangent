@@ -1,7 +1,15 @@
 import { SendHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
-export default function Composer({ onSend, loading, disabled, placeholder, sendLabel = '发送', generatingLabel = '生成中' }) {
+export default function Composer({
+  onSend,
+  loading,
+  disabled,
+  placeholder,
+  sendLabel = '发送',
+  generatingLabel = '生成中',
+  sendShortcut = 'enter',
+}) {
   const [value, setValue] = useState('');
 
   const submit = async (event) => {
@@ -18,7 +26,12 @@ export default function Composer({ onSend, loading, disabled, placeholder, sendL
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          if (event.nativeEvent.isComposing) return;
+          const wantsEnterSend = sendShortcut === 'enter' && event.key === 'Enter' && !event.shiftKey;
+          const wantsCtrlEnterSend = sendShortcut === 'ctrlEnter'
+            && event.key === 'Enter'
+            && (event.metaKey || event.ctrlKey);
+          if (wantsEnterSend || wantsCtrlEnterSend) {
             submit(event);
           }
         }}

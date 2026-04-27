@@ -2,6 +2,7 @@ import { Check, FlaskConical, KeyRound, Pencil, Plus, RotateCcw, Save, Server, T
 import { useEffect, useMemo, useState } from 'react';
 import { useCopy } from '../i18n';
 import { useChatStore } from '../store/chatStore';
+import PrettySelect from './PrettySelect';
 
 const providerTypes = [
   { value: 'dashscope', label: 'DashScope', hint: '模型示例：dashscope/qwen-plus' },
@@ -28,15 +29,7 @@ export default function ProviderPanel() {
   const {
     providers,
     selectedProviderId,
-    locale,
-    mainPaneColor,
-    branchPaneColor,
-    chatFontSize,
-    setSettingsOpen,
-    setLocale,
-    setMainPaneColor,
-    setBranchPaneColor,
-    setChatFontSize,
+    setEnginesOpen,
     createProvider,
     updateProvider,
     refreshProviders,
@@ -137,59 +130,27 @@ export default function ProviderPanel() {
                 : copy.settings.descCreate}
             </p>
           </div>
-          <button className="icon-button" onClick={() => setSettingsOpen(false)} type="button">
+          <button className="icon-button" onClick={() => setEnginesOpen(false)} type="button">
             <X size={19} />
           </button>
         </header>
-
-        <section className="preference-card">
-          <div className="preference-heading">
-            <strong>{copy.settings.colorMode}</strong>
-            <span>{copy.settings.fontSize}: {chatFontSize}px</span>
-          </div>
-          <div className="preference-grid">
-            <label>
-              {copy.settings.language}
-              <select value={locale} onChange={(event) => setLocale(event.target.value)}>
-                <option value="zh">中文</option>
-                <option value="en">English</option>
-              </select>
-            </label>
-            <label>
-              {copy.settings.primaryColor}
-              <input value={mainPaneColor} onChange={(event) => setMainPaneColor(event.target.value)} type="color" />
-            </label>
-            <label>
-              {copy.settings.branchColor}
-              <input value={branchPaneColor} onChange={(event) => setBranchPaneColor(event.target.value)} type="color" />
-            </label>
-            <label>
-              {copy.settings.fontSize}
-              <input
-                value={chatFontSize}
-                min="12"
-                max="18"
-                onChange={(event) => setChatFontSize(event.target.value)}
-                type="range"
-              />
-            </label>
-          </div>
-        </section>
 
         <form className="provider-form" onSubmit={submit}>
           <label>
             {copy.settings.name}
             <input value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="例如：OpenAI 主力" required />
           </label>
-          <label>
-            {copy.settings.provider}
-            <select value={form.provider_type} onChange={(event) => update('provider_type', event.target.value)}>
-              {providerTypes.map((type) => (
-                <option key={type.value} value={type.value}>{type.label}</option>
-              ))}
-            </select>
-            <span>{selectedType?.hint}</span>
-          </label>
+          <PrettySelect
+            label={copy.settings.provider}
+            value={form.provider_type}
+            onChange={(value) => update('provider_type', value)}
+            options={providerTypes.map((type) => ({
+              value: type.value,
+              label: type.label,
+              description: type.hint,
+            }))}
+            hint={selectedType?.hint}
+          />
           <label>
             {copy.settings.baseUrl}
             <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="可选：OpenAI 兼容网关或 Azure endpoint" />

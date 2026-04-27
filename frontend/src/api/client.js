@@ -88,6 +88,7 @@ export const api = {
   streamMainMessage: (payload, options) => streamRequest('/chat/main/stream', payload, options),
   createBranch: (payload) => request('/branches', { method: 'POST', body: JSON.stringify(payload) }),
   getBranch: (id) => request(`/branches/${id}`),
+  deleteBranch: (id) => request(`/branches/${id}`, { method: 'DELETE' }),
   sendParallelMessage: (payload) => request('/chat/parallel', { method: 'POST', body: JSON.stringify(payload) }),
   streamParallelMessage: (payload, options) => streamRequest('/chat/parallel/stream', payload, options),
   closeBranch: (id, payload) => request(`/branches/${id}/close`, { method: 'POST', body: JSON.stringify(payload) }),

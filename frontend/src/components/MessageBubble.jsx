@@ -1,5 +1,5 @@
-import { Bot, GitBranch, Pencil, Save, UserRound, X } from 'lucide-react';
-import { useState } from 'react';
+import { Bot, ChevronUp, GitBranch, Pencil, Save, Trash2, UserRound, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useCopy } from '../i18n';
 import MarkdownContent from './MarkdownContent';
 
@@ -52,18 +52,111 @@ export default function MessageBubble({ message, branch, onEdit }) {
   );
 }
 
-export function BranchMarker({ marker, onOpen }) {
+export function BranchMarker({ marker, onOpen, onDelete, displayMode = 'compact' }) {
   const copy = useCopy();
-  const label = marker.status === 'open'
-    ? copy.chat.branchOpen
-    : marker.status === 'merged'
-      ? copy.chat.branchMerged
-      : copy.chat.branchDiscarded;
+  const [expanded, setExpanded] = useState(displayMode === 'full');
+  const hasMemory = Boolean(marker.memory_summary);
+  const compactCount = copy.chat.totalPrefix
+    ? `${copy.chat.totalPrefix}${marker.message_count}${copy.chat.branchCount}`
+    : `${marker.message_count} ${copy.chat.branchCount}`;
+  const compactText = hasMemory
+    ? marker.memory_summary
+    : compactCount;
+  const detailText = hasMemory
+    ? marker.memory_summary
+    : `${marker.message_count} ${copy.chat.branchCount}`;
+  const isExpanded = displayMode === 'full' || expanded;
+
+  useEffect(() => {
+    setExpanded(displayMode === 'full');
+  }, [displayMode]);
+
+  if (!isExpanded) {
+    return (
+      <div className="branch-marker branch-marker-compact">
+        <button className="branch-marker-open" type="button" onClick={() => setExpanded(true)}>
+          <GitBranch size={14} />
+          <span>{compactText}</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <button className="branch-marker" type="button" onClick={() => onOpen(marker.id)}>
-      <GitBranch size={15} />
-      <span>{label}</span>
-      <small>{marker.message_count} {copy.chat.branchCount}{marker.memory_summary ? ` · ${marker.memory_summary}` : ''}</small>
-    </button>
+    <div className={`branch-marker branch-marker-expanded ${hasMemory ? 'branch-marker-memory' : ''}`}>
+      <button className="branch-marker-open" type="button" onClick={() => onOpen(marker.id)}>
+        <GitBranch size={15} />
+        <span>{detailText}</span>
+      </button>
+      {displayMode === 'compact' && (
+        <button
+          className="branch-marker-delete branch-marker-collapse"
+          type="button"
+          onClick={() => setExpanded(false)}
+          title={copy.chat.collapseBranch}
+        >
+          <ChevronUp size={14} />
+        </button>
+      )}
+      {onDelete && (
+        <button
+          className="branch-marker-delete"
+          type="button"
+          onClick={() => onDelete(marker.id)}
+          title={copy.chat.deleteBranch}
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function BranchMarkerGroup({ markers, onOpen, onDelete, displayMode = 'compact' }) {
+  const copy = useCopy();
+  const [expanded, setExpanded] = useState(displayMode === 'full');
+  const totalCount = markers.reduce((sum, marker) => sum + Number(marker.message_count || 0), 0);
+  const compactText = copy.chat.totalPrefix
+    ? `${copy.chat.totalPrefix}${totalCount}${copy.chat.branchCount}`
+    : `${totalCount} ${copy.chat.branchCount}`;
+
+  useEffect(() => {
+    setExpanded(displayMode === 'full');
+  }, [displayMode]);
+
+  if (displayMode === 'compact' && !expanded) {
+    return (
+      <div className="branch-marker branch-marker-compact branch-marker-group">
+        <button className="branch-marker-open" type="button" onClick={() => setExpanded(true)}>
+          <GitBranch size={13} />
+          <span>{compactText}</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="branch-marker-group-expanded">
+      <div className="branch-marker-group-head">
+        <span>{compactText}</span>
+        {displayMode === 'compact' && (
+          <button type="button" onClick={() => setExpanded(false)}>
+            <ChevronUp size={13} />
+            {copy.chat.collapseBranch}
+          </button>
+        )}
+      </div>
+      <div className="branch-marker-group-list">
+        {markers.map((marker) => (
+          <BranchMarker
+            key={marker.id}
+            marker={marker}
+            onOpen={onOpen}
+            onDelete={onDelete}
+            displayMode="full"
+          />
+        ))}
+      </div>
+    </div>
   );
 }

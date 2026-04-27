@@ -11,6 +11,7 @@ export default function Sidebar() {
     selectConversation,
     deleteConversation,
     setSettingsOpen,
+    setEnginesOpen,
     providers,
   } = useChatStore();
 
@@ -35,32 +36,47 @@ export default function Sidebar() {
         {conversations.map((conversation) => {
           const summary = conversation.summary || conversation.title || copy.sidebar.untitled;
           return (
-            <button
+            <div
               className={`conversation-item ${conversation.id === activeConversation?.id ? 'active' : ''}`}
               data-tooltip={summary}
               key={conversation.id}
               onClick={() => selectConversation(conversation.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  selectConversation(conversation.id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
               title={`${copy.sidebar.conversationTooltip}: ${summary}`}
-              type="button"
             >
               <span>{summary}</span>
-              <Trash2
-                size={14}
+              <button
+                className="conversation-delete"
+                type="button"
+                title={copy.sidebar.deleteConversation}
                 onClick={(event) => {
                   event.stopPropagation();
                   deleteConversation(conversation.id);
                 }}
-              />
-            </button>
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           );
         })}
       </div>
 
-      <button className="settings-button" onClick={() => setSettingsOpen(true)} type="button">
-        <Settings size={17} />
-        {copy.sidebar.settings}
-        <span>{providers.length}</span>
-      </button>
+      <div className="sidebar-footer">
+        <button className="settings-icon-button" onClick={() => setSettingsOpen(true)} type="button" title={copy.sidebar.settings}>
+          <Settings size={18} />
+        </button>
+        <button className="settings-button" onClick={() => setEnginesOpen(true)} type="button">
+          <span className="settings-label">{copy.sidebar.engines}</span>
+          <span className="settings-count">{providers.length}</span>
+        </button>
+      </div>
     </aside>
   );
 }
