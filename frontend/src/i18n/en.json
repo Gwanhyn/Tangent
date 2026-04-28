@@ -31,7 +31,7 @@
     "emptyMainBody": "Configure an engine, send the first message, then branch from the Primary Flow whenever a side probe is useful.",
     "emptyBranchBody": "The branch inherits the left snapshot. On close, choose Knowledge Integration or keep it as a clean snapshot.",
     "typing": "Model is generating...",
-    "selectionBranch": "Extension from selection",
+    "selectionBranch": "Extension",
     "stop": "Stop Generating",
     "composer": "Message Tangent...",
     "composerEnter": "Message Tangent... (Enter to send, Shift + Enter for newline)",

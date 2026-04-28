@@ -27,6 +27,7 @@ export default function ChatPane({
   onRenameTitle,
 }) {
   const copy = useCopy();
+  const shellRef = useRef(null);
   const listRef = useRef(null);
   const isPrimary = !branch;
   const showPaneHeader = isPrimary || Boolean(title) || Boolean(subtitle);
@@ -73,13 +74,22 @@ export default function ChatPane({
         setSelectionTrigger(null);
         return;
       }
-      const maxX = Math.max(12, window.innerWidth - 190);
-      const maxY = Math.max(12, window.innerHeight - 52);
+      const paneRect = shellRef.current?.getBoundingClientRect();
+      const bounds = paneRect || {
+        left: 0,
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+      };
+      const minX = bounds.left + 10;
+      const minY = bounds.top + 10;
+      const maxX = Math.max(minX, bounds.right - 76);
+      const maxY = Math.max(minY, bounds.bottom - 40);
       setSelectionTrigger({
         text: text.slice(0, 1200),
         parentId: row.dataset.messageId,
-        x: Math.min(Math.max(event.clientX, 12), maxX),
-        y: Math.min(Math.max(event.clientY + 14, 12), maxY),
+        x: Math.min(Math.max(event.clientX, minX), maxX),
+        y: Math.min(Math.max(event.clientY + 10, minY), maxY),
       });
     }, 0);
   };
@@ -146,7 +156,7 @@ export default function ChatPane({
   };
 
   return (
-    <section className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'} ${showPaneHeader ? '' : 'pane-no-header'}`}>
+    <section ref={shellRef} className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'} ${showPaneHeader ? '' : 'pane-no-header'}`}>
       {showPaneHeader && (
         <header className={`pane-header ${isPrimary ? 'pane-header-primary' : ''}`}>
           {isPrimary && (
