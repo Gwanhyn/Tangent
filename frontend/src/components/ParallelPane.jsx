@@ -86,7 +86,6 @@ export default function ParallelPane({
       {selectedText && (
         <div className="parallel-controls">
           <div className="selected-context">
-            <strong>{copy.parallel.selectedContext}</strong>
             <span>{selectedText}</span>
           </div>
         </div>
@@ -95,8 +94,8 @@ export default function ParallelPane({
       <div className="parallel-chat-slot">
         <ChatPane
           branch
-          title={copy.parallel.chatTitle}
-          subtitle={readOnly ? copy.parallel.chatSubtitleClosed : copy.parallel.chatSubtitleOpen}
+          title=""
+          subtitle=""
           messages={messages}
           onSend={onSend}
           onEdit={readOnly ? undefined : onEdit}

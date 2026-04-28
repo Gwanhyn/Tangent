@@ -190,7 +190,7 @@ export default function App() {
         }}
       >
         <ChatPane
-          title={activeConversation?.summary || activeConversation?.title || copy.sidebar.untitled}
+          title={activeConversation?.title || activeConversation?.summary || copy.sidebar.untitled}
           subtitle=""
           messages={messages}
           branchMarkers={branchMarkers}

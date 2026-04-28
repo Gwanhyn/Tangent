@@ -12,6 +12,10 @@
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
     "collapsedLabel": "Tangent quick action rail",
+    "searchConversations": "Search conversations",
+    "searchPlaceholder": "Search title or summary...",
+    "clearSearch": "Clear search",
+    "noSearchResults": "No matching conversations",
     "conversationTooltip": "Full summary",
     "deleteConversation": "Delete conversation",
     "untitled": "New exploration"

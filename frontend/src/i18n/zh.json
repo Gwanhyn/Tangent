@@ -12,6 +12,10 @@
     "collapseSidebar": "收起侧边栏",
     "expandSidebar": "展开侧边栏",
     "collapsedLabel": "Tangent 快捷操作栏",
+    "searchConversations": "搜索对话",
+    "searchPlaceholder": "搜索标题或摘要...",
+    "clearSearch": "清空搜索",
+    "noSearchResults": "没有匹配的对话",
     "conversationTooltip": "完整摘要",
     "deleteConversation": "删除会话",
     "untitled": "新的探索"

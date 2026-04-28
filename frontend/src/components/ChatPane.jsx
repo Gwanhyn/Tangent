@@ -29,6 +29,7 @@ export default function ChatPane({
   const copy = useCopy();
   const listRef = useRef(null);
   const isPrimary = !branch;
+  const showPaneHeader = isPrimary || Boolean(title) || Boolean(subtitle);
   const [autoScroll, setAutoScroll] = useState(true);
   const [selectionTrigger, setSelectionTrigger] = useState(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -72,11 +73,13 @@ export default function ChatPane({
         setSelectionTrigger(null);
         return;
       }
+      const maxX = Math.max(12, window.innerWidth - 190);
+      const maxY = Math.max(12, window.innerHeight - 52);
       setSelectionTrigger({
         text: text.slice(0, 1200),
         parentId: row.dataset.messageId,
-        x: event.clientX,
-        y: event.clientY,
+        x: Math.min(Math.max(event.clientX, 12), maxX),
+        y: Math.min(Math.max(event.clientY + 14, 12), maxY),
       });
     }, 0);
   };
@@ -143,82 +146,90 @@ export default function ChatPane({
   };
 
   return (
-    <section className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'}`}>
-      <header className={`pane-header ${isPrimary ? 'pane-header-primary' : ''}`}>
-        {isPrimary && <div className="pane-header-spacer" aria-hidden="true" />}
-        <div className="pane-heading">
-          {isPrimary && <p className="pane-brand-label">Tangent</p>}
-          <p className="eyebrow">{branch ? copy.chat.branchEyebrow : copy.chat.primaryEyebrow}</p>
-          <div className="pane-title-row">
-            {editingTitle ? (
-              <>
-                <input
-                  className="title-edit-input"
-                  value={titleDraft}
-                  onChange={(event) => setTitleDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      saveTitle();
-                    }
-                    if (event.key === 'Escape') {
-                      setEditingTitle(false);
-                      setTitleDraft(title);
-                    }
-                  }}
-                  autoFocus
-                  aria-label={copy.chat.titleInputLabel}
-                />
-                <button className="title-edit-action" type="button" onClick={saveTitle} title={copy.chat.saveTitle}>
-                  <Check size={14} />
-                </button>
-                <button
-                  className="title-edit-action"
-                  type="button"
-                  onClick={() => {
-                    setEditingTitle(false);
-                    setTitleDraft(title);
-                  }}
-                  title={copy.chat.cancel}
-                >
-                  <X size={14} />
-                </button>
-              </>
-            ) : (
-              <>
-                <h2>{title}</h2>
-                {!branch && onRenameTitle && (
-                  <button
-                    className="title-edit-button"
-                    type="button"
-                    onClick={() => setEditingTitle(true)}
-                    title={copy.chat.renameTitle}
-                  >
-                    <Pencil size={14} />
-                  </button>
+    <section className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'} ${showPaneHeader ? '' : 'pane-no-header'}`}>
+      {showPaneHeader && (
+        <header className={`pane-header ${isPrimary ? 'pane-header-primary' : ''}`}>
+          {isPrimary && (
+            <div className="primary-brand-block">
+              <strong>Tangent</strong>
+              <span>{copy.chat.primaryEyebrow}</span>
+            </div>
+          )}
+          <div className="pane-heading">
+            {!isPrimary && <p className="eyebrow">{copy.chat.branchEyebrow}</p>}
+            {title && (
+              <div className="pane-title-row">
+                {editingTitle ? (
+                  <>
+                    <input
+                      className="title-edit-input"
+                      value={titleDraft}
+                      onChange={(event) => setTitleDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          saveTitle();
+                        }
+                        if (event.key === 'Escape') {
+                          setEditingTitle(false);
+                          setTitleDraft(title);
+                        }
+                      }}
+                      autoFocus
+                      aria-label={copy.chat.titleInputLabel}
+                    />
+                    <button className="title-edit-action" type="button" onClick={saveTitle} title={copy.chat.saveTitle}>
+                      <Check size={14} />
+                    </button>
+                    <button
+                      className="title-edit-action"
+                      type="button"
+                      onClick={() => {
+                        setEditingTitle(false);
+                        setTitleDraft(title);
+                      }}
+                      title={copy.chat.cancel}
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h2>{title}</h2>
+                    {!branch && onRenameTitle && (
+                      <button
+                        className="title-edit-button"
+                        type="button"
+                        onClick={() => setEditingTitle(true)}
+                        title={copy.chat.renameTitle}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                  </>
                 )}
-              </>
+              </div>
             )}
+            {subtitle && <p className="pane-subtitle">{subtitle}</p>}
           </div>
-          {subtitle && <p className="pane-subtitle">{subtitle}</p>}
-        </div>
-        {isPrimary && (
-          <div className="pane-actions">
-            {hiddenMemoryCount > 0 && (
-              <span className="memory-chip" title={copy.chat.memoryTooltip}>
-                <MemoryStick size={15} />
-                {hiddenMemoryCount} {copy.chat.hiddenMemory}
-              </span>
-            )}
-            {showBranchButton && onOpenBranch && (
-              <button className="derive-button" onClick={() => onOpenBranch()} type="button">
-                <GitBranchPlus size={17} />
-                {copy.chat.branchOut}
-              </button>
-            )}
-          </div>
-        )}
-      </header>
+          {isPrimary && (
+            <div className="pane-actions">
+              {hiddenMemoryCount > 0 && (
+                <span className="memory-chip" title={copy.chat.memoryTooltip}>
+                  <MemoryStick size={15} />
+                  <span>{hiddenMemoryCount} {copy.chat.hiddenMemory}</span>
+                </span>
+              )}
+              {showBranchButton && onOpenBranch && (
+                <button className="derive-button" onClick={() => onOpenBranch()} type="button">
+                  <GitBranchPlus size={17} />
+                  {copy.chat.branchOut}
+                </button>
+              )}
+            </div>
+          )}
+        </header>
+      )}
 
       <ContextTimeline messages={messages} label={copy.chat.timeline} listRef={listRef} onJump={jumpToMessage} />
 
@@ -265,7 +276,7 @@ export default function ChatPane({
           onClick={openFromSelection}
         >
           <GitBranchPlus size={15} />
-          {copy.chat.selectionBranch}
+          <span>{copy.chat.selectionBranch}</span>
         </button>
       )}
 
