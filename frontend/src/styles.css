@@ -16,7 +16,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background:
     radial-gradient(circle at 12% 8%, rgba(255, 190, 106, 0.55), transparent 28rem),
@@ -40,7 +40,7 @@ button {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 18px;
-  height: 100vh;
+  height: 100dvh;
   padding: 18px;
   overflow: hidden;
 }
@@ -300,6 +300,7 @@ button {
 
 .pane-shell,
 .parallel-wrap {
+  container-type: inline-size;
   min-width: 0;
   height: calc(100vh - 36px);
   border: 1px solid rgba(63, 74, 65, 0.16);
@@ -346,23 +347,82 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  min-width: 0;
   padding: 20px 22px 16px;
   border-bottom: 1px solid rgba(67, 75, 65, 0.1);
+}
+
+.pane-header > div,
+.parallel-toolbar > div:first-child {
+  min-width: 0;
 }
 
 .pane-header h2,
 .parallel-toolbar h3,
 .settings-header h2 {
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
   letter-spacing: -0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pane-header p,
 .parallel-toolbar p,
 .settings-header p {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   margin: 4px 0 0;
   color: #6d746d;
   font-size: 13px;
+}
+
+.pane-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pane-title-row h2 {
+  flex: 0 1 auto;
+}
+
+.title-edit-button,
+.title-edit-action {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
+  border: 0;
+  border-radius: 999px;
+  color: #26443c;
+  background: rgba(31, 73, 63, 0.08);
+  opacity: 0.28;
+  transition: opacity 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.title-edit-button:hover,
+.title-edit-action:hover,
+.pane-title-row:focus-within .title-edit-button {
+  opacity: 0.92;
+  background: rgba(31, 73, 63, 0.14);
+}
+
+.title-edit-input {
+  flex: 1 1 min(280px, 100%);
+  min-width: 0;
+  max-width: min(520px, 100%);
+  height: 34px;
+  border: 1px solid rgba(31, 73, 63, 0.18);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #17211f;
+  outline: none;
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .parallel-toolbar p,
@@ -385,23 +445,31 @@ button {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .memory-chip {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  flex: 0 0 auto;
   min-height: 36px;
+  max-width: 100%;
   padding: 0 12px;
   border-radius: 999px;
   color: #294e45;
   background: rgba(31, 73, 63, 0.1);
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .derive-button {
+  flex: 0 0 auto;
   min-height: 38px;
   padding: 0 15px;
+  white-space: nowrap;
 }
 
 .message-list {
@@ -778,11 +846,17 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .parallel-toolbar-actions .parallel-model {
-  min-width: min(260px, 36vw);
+  flex: 1 1 220px;
+  min-width: min(220px, 100%);
+  max-width: min(320px, 100%);
 }
 
 .parallel-toolbar-actions .parallel-model .pretty-select-label {
@@ -1661,9 +1735,47 @@ button {
 
 .boot-screen {
   min-height: 100vh;
+  padding: 24px;
   gap: 12px;
   color: #26443c;
   background: #f4efe6;
+}
+
+.boot-card {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid rgba(31, 73, 63, 0.1);
+  border-radius: 28px;
+  padding: 24px;
+  background: rgba(255, 252, 245, 0.72);
+  box-shadow: 0 24px 70px rgba(52, 62, 55, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.boot-progress {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(31, 73, 63, 0.1);
+}
+
+.boot-progress > div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1f493f, #d18a3b);
+  transition: width 0.1s linear;
+}
+
+.boot-card strong {
+  color: #1f493f;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.boot-muted {
+  color: rgba(38, 68, 60, 0.62);
 }
 
 .boot-screen small {
@@ -1684,11 +1796,14 @@ button {
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(150px, 28dvh) minmax(0, 1fr);
     overflow: hidden;
   }
 
   .sidebar {
+    height: 100%;
     min-height: auto;
+    min-width: 0;
   }
 
   .conversation-list {
@@ -1700,12 +1815,13 @@ button {
   .workspace,
   .workspace.is-parallel {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(560px, 1fr) 10px minmax(560px, 1fr);
-    height: calc(100vh - 154px);
+    grid-template-rows: minmax(0, 1fr) 10px minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
   }
 
   .workspace:not(.is-parallel) {
-    grid-template-rows: minmax(640px, calc(100vh - 180px));
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .resize-rail {
@@ -1715,7 +1831,78 @@ button {
 
   .pane-shell,
   .parallel-wrap {
-    min-height: 560px;
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+@container (max-width: 620px) {
+  .pane-header,
+  .parallel-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .pane-actions,
+  .parallel-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .parallel-toolbar-actions .parallel-model {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .memory-chip,
+  .derive-button {
+    min-height: 34px;
+    font-size: 12px;
+  }
+
+  .message-list {
+    padding: 18px 28px 18px 16px;
+  }
+}
+
+@container (max-width: 460px) {
+  .composer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .send-button {
+    width: 100%;
+  }
+
+  .message-row,
+  .message-row-user {
+    gap: 8px;
+  }
+
+  .message-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 12px;
+  }
+
+  .message-bubble {
+    max-width: calc(100% - 38px);
+    padding: 12px 13px;
+  }
+
+  .context-timeline {
+    right: 4px;
+  }
+
+  .pane-title-row {
+    flex-wrap: wrap;
+  }
+
+  .title-edit-input {
+    flex-basis: 100%;
   }
 }
 

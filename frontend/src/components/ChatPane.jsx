@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { GitBranchPlus, Loader2, MemoryStick, Octagon, Sparkles } from 'lucide-react';
+import { Check, GitBranchPlus, Loader2, MemoryStick, Octagon, Pencil, Sparkles, X } from 'lucide-react';
 import Composer from './Composer';
 import ContextTimeline from './ContextTimeline';
 import MessageBubble, { BranchMarker, BranchMarkerGroup } from './MessageBubble';
@@ -24,11 +24,14 @@ export default function ChatPane({
   onDeleteBranch,
   branchMarkerMode = 'compact',
   sendShortcut = 'enter',
+  onRenameTitle,
 }) {
   const copy = useCopy();
   const listRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [selectionTrigger, setSelectionTrigger] = useState(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(title);
 
   const markersByParent = useMemo(() => {
     const map = new Map();
@@ -44,6 +47,12 @@ export default function ChatPane({
     if (!el || (!autoScroll && !loading)) return;
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, autoScroll, loading]);
+
+  useEffect(() => {
+    if (!editingTitle) {
+      setTitleDraft(title);
+    }
+  }, [editingTitle, title]);
 
   const handleScroll = () => {
     const el = listRef.current;
@@ -84,6 +93,14 @@ export default function ChatPane({
   const jumpToMessage = (messageId) => {
     const row = listRef.current?.querySelector(`[data-message-id="${messageId}"]`);
     row?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const saveTitle = () => {
+    const nextTitle = titleDraft.trim();
+    if (nextTitle && nextTitle !== title) {
+      onRenameTitle?.(nextTitle);
+    }
+    setEditingTitle(false);
   };
 
   const renderBranchMarkers = (markers = []) => {
@@ -129,7 +146,57 @@ export default function ChatPane({
       <header className="pane-header">
         <div>
           <p className="eyebrow">{branch ? copy.chat.branchEyebrow : copy.chat.primaryEyebrow}</p>
-          <h2>{title}</h2>
+          <div className="pane-title-row">
+            {editingTitle ? (
+              <>
+                <input
+                  className="title-edit-input"
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      saveTitle();
+                    }
+                    if (event.key === 'Escape') {
+                      setEditingTitle(false);
+                      setTitleDraft(title);
+                    }
+                  }}
+                  autoFocus
+                  aria-label={copy.chat.titleInputLabel}
+                />
+                <button className="title-edit-action" type="button" onClick={saveTitle} title={copy.chat.saveTitle}>
+                  <Check size={14} />
+                </button>
+                <button
+                  className="title-edit-action"
+                  type="button"
+                  onClick={() => {
+                    setEditingTitle(false);
+                    setTitleDraft(title);
+                  }}
+                  title={copy.chat.cancel}
+                >
+                  <X size={14} />
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>{title}</h2>
+                {!branch && onRenameTitle && (
+                  <button
+                    className="title-edit-button"
+                    type="button"
+                    onClick={() => setEditingTitle(true)}
+                    title={copy.chat.renameTitle}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
           <p>{subtitle}</p>
         </div>
         {!branch && (

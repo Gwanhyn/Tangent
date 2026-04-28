@@ -4,6 +4,7 @@ import { api } from '../api/client';
 let mainAbortController = null;
 let branchAbortController = null;
 let bootstrapPromise = null;
+const WORKSPACE_CACHE_KEY = 'tangent.workspaceSnapshot';
 
 const defaultPreferences = {
   locale: 'zh',
@@ -24,6 +25,42 @@ function writePreference(key, value) {
   window.localStorage.setItem(`tangent.${key}`, String(value));
 }
 
+function readWorkspaceCache() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(WORKSPACE_CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw);
+    return cache?.activeConversation ? cache : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeWorkspaceCache(state) {
+  if (typeof window === 'undefined' || !state.activeConversation) return;
+  const snapshot = {
+    providers: state.providers || [],
+    conversations: state.conversations || [],
+    activeConversation: state.activeConversation,
+    messages: state.messages || [],
+    branchMarkers: state.branchMarkers || [],
+    hiddenMemoryCount: state.hiddenMemoryCount || 0,
+    selectedProviderId: state.selectedProviderId || null,
+    branchProviderId: state.branchProviderId || null,
+    isParallelMode: Boolean(state.isParallelMode),
+    activeBranch: state.activeBranch || null,
+    branchMessages: state.branchMessages || [],
+    syncMemory: Boolean(state.syncMemory),
+    cachedAt: new Date().toISOString(),
+  };
+  try {
+    window.localStorage.setItem(WORKSPACE_CACHE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Cache is a convenience only; storage pressure should not block the app.
+  }
+}
+
 function readNumberPreference(key, fallback) {
   const value = Number(readPreference(key, fallback));
   return Number.isFinite(value) ? value : fallback;
@@ -37,20 +74,23 @@ function userFacingError(error) {
   return message;
 }
 
+const cachedWorkspace = readWorkspaceCache();
+
 const initialState = {
-  bootstrapping: true,
-  providers: [],
-  conversations: [],
-  activeConversation: null,
-  messages: [],
-  branchMarkers: [],
-  hiddenMemoryCount: 0,
-  selectedProviderId: null,
-  branchProviderId: null,
-  isParallelMode: false,
-  activeBranch: null,
-  branchMessages: [],
-  syncMemory: false,
+  bootstrapping: !cachedWorkspace,
+  hydratedFromCache: Boolean(cachedWorkspace),
+  providers: cachedWorkspace?.providers || [],
+  conversations: cachedWorkspace?.conversations || [],
+  activeConversation: cachedWorkspace?.activeConversation || null,
+  messages: cachedWorkspace?.messages || [],
+  branchMarkers: cachedWorkspace?.branchMarkers || [],
+  hiddenMemoryCount: cachedWorkspace?.hiddenMemoryCount || 0,
+  selectedProviderId: cachedWorkspace?.selectedProviderId || null,
+  branchProviderId: cachedWorkspace?.branchProviderId || null,
+  isParallelMode: Boolean(cachedWorkspace?.isParallelMode),
+  activeBranch: cachedWorkspace?.activeBranch || null,
+  branchMessages: cachedWorkspace?.branchMessages || [],
+  syncMemory: Boolean(cachedWorkspace?.syncMemory),
   paneWidth: 56,
   settingsOpen: false,
   enginesOpen: false,
@@ -226,9 +266,13 @@ export const useChatStore = create((set, get) => ({
         branchMessages: state.branchLoading ? state.branchMessages : branch?.messages || [],
         syncMemory: branch?.sync_memory ?? state.syncMemory,
         bootstrapping: false,
+        hydratedFromCache: false,
       });
+      writeWorkspaceCache(get());
+      return true;
     } catch (error) {
       set({ error: userFacingError(error), bootstrapping: boot });
+      return false;
     }
   },
 
@@ -238,7 +282,7 @@ export const useChatStore = create((set, get) => ({
     }
     bootstrapPromise = (async () => {
       try {
-        await get().syncWorkspace({ boot: true });
+        return await get().syncWorkspace({ boot: !get().hydratedFromCache });
       } finally {
         bootstrapPromise = null;
       }
@@ -300,6 +344,26 @@ export const useChatStore = create((set, get) => ({
     set({ conversations });
   },
 
+  renameConversation: async (title) => {
+    const { activeConversation } = get();
+    const clean = title.trim();
+    if (!activeConversation || !clean) return;
+    set({ error: '' });
+    try {
+      const conversation = await api.updateConversation(activeConversation.id, { title: clean });
+      const conversations = await api.listConversations();
+      set((state) => ({
+        conversations,
+        activeConversation: state.activeConversation?.id === conversation.id
+          ? conversation
+          : state.activeConversation,
+      }));
+      writeWorkspaceCache(get());
+    } catch (error) {
+      set({ error: userFacingError(error) });
+    }
+  },
+
   createConversation: async () => {
     set({ error: '' });
     try {
@@ -314,6 +378,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: [],
         syncMemory: false,
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -330,6 +395,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: branch?.messages || [],
         syncMemory: branch?.sync_memory || false,
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -352,6 +418,7 @@ export const useChatStore = create((set, get) => ({
         activeBranch: null,
         branchMessages: [],
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -418,6 +485,7 @@ export const useChatStore = create((set, get) => ({
       );
       const conversations = await api.listConversations();
       set({ conversations, mainLoading: false });
+      writeWorkspaceCache(get());
     } catch (error) {
       if (error.name !== 'AbortError') {
         set({ error: userFacingError(error) });
@@ -456,6 +524,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: branch.messages || [],
         syncMemory: branch.sync_memory,
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -496,6 +565,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: [],
         syncMemory: branch.sync_memory,
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -511,6 +581,7 @@ export const useChatStore = create((set, get) => ({
         branchMessages: branch.messages || [],
         syncMemory: branch.sync_memory,
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -532,6 +603,7 @@ export const useChatStore = create((set, get) => ({
         activeBranch: isDeletingActive ? null : get().activeBranch,
         branchMessages: isDeletingActive ? [] : get().branchMessages,
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }
@@ -598,6 +670,7 @@ export const useChatStore = create((set, get) => ({
         },
       );
       set({ branchLoading: false });
+      writeWorkspaceCache(get());
     } catch (error) {
       if (error.name !== 'AbortError') {
         set({ error: userFacingError(error) });
@@ -639,6 +712,7 @@ export const useChatStore = create((set, get) => ({
         activeBranch: null,
         branchMessages: [],
       });
+      writeWorkspaceCache(get());
     } catch (error) {
       set({ error: userFacingError(error) });
     }

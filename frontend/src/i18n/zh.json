@@ -1,6 +1,14 @@
 {
   "app": {
     "booting": "正在启动 Tangent 工作台...",
+    "bootHint": "正在加载会话、模型配置和当前分支，请保持窗口打开。",
+    "bootTimeout": "加载时间超过预期，请确认后端服务正在运行，然后重试。",
+    "loadingProgress": "工作区加载进度",
+    "loadingPhases": {
+      "INITIALIZING": "正在初始化工作台外壳...",
+      "FETCHING": "正在读取模型配置、历史会话和当前分支...",
+      "FINALIZING": "正在完成工作区状态同步..."
+    },
     "retry": "重新加载",
     "resizePane": "拖拽调整分栏宽度"
   },
@@ -37,6 +45,9 @@
     "branchAssistant": "分支助手",
     "you": "你",
     "edit": "编辑并重新发送",
+    "renameTitle": "修改对话标题",
+    "titleInputLabel": "对话标题",
+    "saveTitle": "保存标题",
     "saveResend": "保存并重发",
     "cancel": "取消",
     "branchOpen": "正在衍生",

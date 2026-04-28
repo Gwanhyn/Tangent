@@ -160,6 +160,25 @@ def create_conversation(title: str) -> dict[str, Any]:
     return row_to_dict(row)
 
 
+def update_conversation_title(conversation_id: str, title: str) -> dict[str, Any]:
+    clean = " ".join(title.strip().split())[:120]
+    if not clean:
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    now = utc_now()
+    with get_connection() as conn:
+        require_conversation(conn, conversation_id)
+        conn.execute(
+            """
+            UPDATE conversations
+            SET title = ?, summary = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (clean, clean, now, conversation_id),
+        )
+        row = conn.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+    return row_to_dict(row)
+
+
 def delete_conversation(conversation_id: str) -> None:
     with get_connection() as conn:
         require_conversation(conn, conversation_id)

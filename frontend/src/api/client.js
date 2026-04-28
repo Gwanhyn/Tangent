@@ -81,6 +81,7 @@ export const api = {
   testProvider: (id) => request(`/providers/${id}/test`, { method: 'POST' }),
   listConversations: () => request('/conversations'),
   createConversation: (payload) => request('/conversations', { method: 'POST', body: JSON.stringify(payload) }),
+  updateConversation: (id, payload) => request(`/conversations/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   getConversation: (id) => request(`/conversations/${id}`),
   summarizeConversation: (id, payload) => request(`/conversations/${id}/summary`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteConversation: (id) => request(`/conversations/${id}`, { method: 'DELETE' }),

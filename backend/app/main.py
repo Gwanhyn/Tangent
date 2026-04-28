@@ -22,6 +22,7 @@ from .schemas import (
     ConversationDetail,
     ConversationSummaryRequest,
     ConversationOut,
+    ConversationUpdate,
     ParallelChatRequest,
     ProviderCreate,
     ProviderOut,
@@ -166,6 +167,11 @@ def list_conversations() -> list[dict]:
 @app.post("/api/conversations", response_model=ConversationOut)
 def create_conversation(payload: ConversationCreate) -> dict:
     return repo.create_conversation(payload.title)
+
+
+@app.put("/api/conversations/{conversation_id}", response_model=ConversationOut)
+def update_conversation(conversation_id: str, payload: ConversationUpdate) -> dict:
+    return repo.update_conversation_title(conversation_id, payload.title)
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=ConversationDetail)

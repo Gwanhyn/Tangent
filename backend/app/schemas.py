@@ -45,6 +45,10 @@ class ConversationCreate(BaseModel):
     title: str = Field("新的平行对话", min_length=1, max_length=120)
 
 
+class ConversationUpdate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+
+
 class ConversationOut(BaseModel):
     id: str
     title: str

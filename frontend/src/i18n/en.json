@@ -1,6 +1,14 @@
 {
   "app": {
     "booting": "Starting the Tangent workspace...",
+    "bootHint": "Loading conversations, providers, and the active branch. Please keep this window open.",
+    "bootTimeout": "Loading is taking longer than expected. Please check whether the backend service is running, then retry.",
+    "loadingProgress": "Workspace loading progress",
+    "loadingPhases": {
+      "INITIALIZING": "Initializing workspace shell...",
+      "FETCHING": "Fetching providers, conversations, and active branch data...",
+      "FINALIZING": "Finalizing workspace state..."
+    },
     "retry": "Reload",
     "resizePane": "Drag to resize panes"
   },
@@ -37,6 +45,9 @@
     "branchAssistant": "Branch assistant",
     "you": "You",
     "edit": "Edit and resend",
+    "renameTitle": "Rename conversation",
+    "titleInputLabel": "Conversation title",
+    "saveTitle": "Save title",
     "saveResend": "Save and resend",
     "cancel": "Cancel",
     "branchOpen": "Branching",
