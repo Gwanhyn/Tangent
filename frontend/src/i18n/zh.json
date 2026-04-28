@@ -1,14 +1,6 @@
 {
   "app": {
     "booting": "正在启动 Tangent 工作台...",
-    "bootHint": "正在加载会话、模型配置和当前分支，请保持窗口打开。",
-    "bootTimeout": "加载时间超过预期，请确认后端服务正在运行，然后重试。",
-    "loadingProgress": "工作区加载进度",
-    "loadingPhases": {
-      "INITIALIZING": "正在初始化工作台外壳...",
-      "FETCHING": "正在读取模型配置、历史会话和当前分支...",
-      "FINALIZING": "正在完成工作区状态同步..."
-    },
     "retry": "重新加载",
     "resizePane": "拖拽调整分栏宽度"
   },
@@ -17,6 +9,9 @@
     "newChat": "新建对话",
     "settings": "设置",
     "engines": "模型配置",
+    "collapseSidebar": "收起侧边栏",
+    "expandSidebar": "展开侧边栏",
+    "collapsedLabel": "Tangent 快捷操作栏",
     "conversationTooltip": "完整摘要",
     "deleteConversation": "删除会话",
     "untitled": "新的探索"
@@ -24,7 +19,6 @@
   "chat": {
     "primaryEyebrow": "Primary Flow",
     "branchEyebrow": "Side-probe / Branch",
-    "primarySubtitle": "主线程保持线性整洁；知识集成后的分支内容会以隐藏记忆参与后续调用。",
     "memoryTooltip": "这些隐藏消息会参与下一次主线程模型调用",
     "hiddenMemory": "条隐藏记忆",
     "branchOut": "衍生",

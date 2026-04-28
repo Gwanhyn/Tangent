@@ -28,6 +28,7 @@ export default function ChatPane({
 }) {
   const copy = useCopy();
   const listRef = useRef(null);
+  const isPrimary = !branch;
   const [autoScroll, setAutoScroll] = useState(true);
   const [selectionTrigger, setSelectionTrigger] = useState(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -143,8 +144,10 @@ export default function ChatPane({
 
   return (
     <section className={`pane-shell ${branch ? 'pane-branch' : 'pane-main'}`}>
-      <header className="pane-header">
-        <div>
+      <header className={`pane-header ${isPrimary ? 'pane-header-primary' : ''}`}>
+        {isPrimary && <div className="pane-header-spacer" aria-hidden="true" />}
+        <div className="pane-heading">
+          {isPrimary && <p className="pane-brand-label">Tangent</p>}
           <p className="eyebrow">{branch ? copy.chat.branchEyebrow : copy.chat.primaryEyebrow}</p>
           <div className="pane-title-row">
             {editingTitle ? (
@@ -197,9 +200,9 @@ export default function ChatPane({
               </>
             )}
           </div>
-          <p>{subtitle}</p>
+          {subtitle && <p className="pane-subtitle">{subtitle}</p>}
         </div>
-        {!branch && (
+        {isPrimary && (
           <div className="pane-actions">
             {hiddenMemoryCount > 0 && (
               <span className="memory-chip" title={copy.chat.memoryTooltip}>

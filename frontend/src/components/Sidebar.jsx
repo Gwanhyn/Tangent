@@ -1,4 +1,4 @@
-import { MessageSquarePlus, Settings, Trash2, Waves } from 'lucide-react';
+import { Cpu, MessageSquarePlus, Settings, Trash2, Waves } from 'lucide-react';
 import { useCopy } from '../i18n';
 import { useChatStore } from '../store/chatStore';
 
@@ -12,19 +12,39 @@ export default function Sidebar() {
     deleteConversation,
     setSettingsOpen,
     setEnginesOpen,
+    sidebarCollapsed,
+    toggleSidebar,
     providers,
   } = useChatStore();
+
+  if (sidebarCollapsed) {
+    return (
+      <aside className="sidebar is-collapsed" aria-label={copy.sidebar.collapsedLabel}>
+        <div className="sidebar-rail">
+          <button className="rail-button rail-brand" onClick={toggleSidebar} type="button" title={copy.sidebar.expandSidebar}>
+            <Waves size={21} />
+          </button>
+          <button className="rail-button" onClick={createConversation} type="button" title={copy.sidebar.newChat}>
+            <MessageSquarePlus size={18} />
+          </button>
+          <div className="rail-spacer" />
+          <button className="rail-button" onClick={() => setSettingsOpen(true)} type="button" title={copy.sidebar.settings}>
+            <Settings size={18} />
+          </button>
+          <button className="rail-button rail-engine" onClick={() => setEnginesOpen(true)} type="button" title={copy.sidebar.engines}>
+            <Cpu size={18} />
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-mark">
+        <button className="brand-mark brand-toggle" onClick={toggleSidebar} type="button" title={copy.sidebar.collapseSidebar}>
           <Waves size={21} />
-        </div>
-        <div>
-          <strong>Tangent</strong>
-          <span>{copy.sidebar.version}</span>
-        </div>
+        </button>
       </div>
 
       <button className="new-chat" onClick={createConversation} type="button">
@@ -73,6 +93,7 @@ export default function Sidebar() {
           <Settings size={18} />
         </button>
         <button className="settings-button" onClick={() => setEnginesOpen(true)} type="button">
+          <Cpu size={17} />
           <span className="settings-label">{copy.sidebar.engines}</span>
           <span className="settings-count">{providers.length}</span>
         </button>

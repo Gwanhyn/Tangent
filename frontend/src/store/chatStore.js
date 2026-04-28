@@ -13,6 +13,7 @@ const defaultPreferences = {
   chatFontSize: 15,
   sendShortcut: 'enter',
   branchMarkerMode: 'compact',
+  sidebarCollapsed: false,
 };
 
 function readPreference(key, fallback) {
@@ -66,6 +67,11 @@ function readNumberPreference(key, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function readBooleanPreference(key, fallback) {
+  const value = readPreference(key, String(fallback));
+  return value === 'true';
+}
+
 function userFacingError(error) {
   const message = error?.message || String(error || 'Unknown error');
   if (/failed to fetch|networkerror|load failed/i.test(message)) {
@@ -103,6 +109,7 @@ const initialState = {
   chatFontSize: readNumberPreference('chatFontSize', defaultPreferences.chatFontSize),
   sendShortcut: readPreference('sendShortcut', defaultPreferences.sendShortcut),
   branchMarkerMode: readPreference('branchMarkerMode', defaultPreferences.branchMarkerMode),
+  sidebarCollapsed: readBooleanPreference('sidebarCollapsed', defaultPreferences.sidebarCollapsed),
 };
 
 function chooseProvider(providers, currentId) {
@@ -174,6 +181,15 @@ export const useChatStore = create((set, get) => ({
   clearError: () => set({ error: '' }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setEnginesOpen: (enginesOpen) => set({ enginesOpen }),
+  setSidebarCollapsed: (sidebarCollapsed) => {
+    writePreference('sidebarCollapsed', sidebarCollapsed);
+    set({ sidebarCollapsed });
+  },
+  toggleSidebar: () => {
+    const sidebarCollapsed = !get().sidebarCollapsed;
+    writePreference('sidebarCollapsed', sidebarCollapsed);
+    set({ sidebarCollapsed });
+  },
   setPaneWidth: (paneWidth) => set({ paneWidth: Math.min(66, Math.max(42, paneWidth)) }),
   setSyncMemory: (syncMemory) => set({ syncMemory }),
   setBranchProviderId: (branchProviderId) => set({ branchProviderId }),

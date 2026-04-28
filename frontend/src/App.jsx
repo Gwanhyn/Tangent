@@ -8,18 +8,6 @@ import Sidebar from './components/Sidebar';
 import { useCopy } from './i18n';
 import { useChatStore } from './store/chatStore';
 
-const LoadingPhase = Object.freeze({
-  INITIALIZING: 'INITIALIZING',
-  FETCHING: 'FETCHING',
-  FINALIZING: 'FINALIZING',
-});
-
-const PHASE_TARGETS = {
-  [LoadingPhase.INITIALIZING]: 30,
-  [LoadingPhase.FETCHING]: 90,
-  [LoadingPhase.FINALIZING]: 100,
-};
-
 function clampPaneWidth(percent, containerWidth = 0) {
   if (!containerWidth || containerWidth < 720) {
     return 50;
@@ -33,10 +21,7 @@ export default function App() {
   const bypassBootScreenRef = useRef(false);
   const [workspaceWidth, setWorkspaceWidth] = useState(0);
   const [bootAttempt, setBootAttempt] = useState(0);
-  const [loadingPhase, setLoadingPhase] = useState(LoadingPhase.INITIALIZING);
-  const [displayProgress, setDisplayProgress] = useState(0);
-  const [targetProgress, setTargetProgress] = useState(PHASE_TARGETS[LoadingPhase.INITIALIZING]);
-  const [isTimeout, setIsTimeout] = useState(false);
+  const [bootFailed, setBootFailed] = useState(false);
   const copy = useCopy();
   const {
     bootstrapping,
@@ -62,6 +47,7 @@ export default function App() {
     chatFontSize,
     sendShortcut,
     branchMarkerMode,
+    sidebarCollapsed,
     bootstrap,
     syncWorkspace,
     clearError,
@@ -86,28 +72,12 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const timeout = window.setTimeout(() => {
-      if (!cancelled) {
-        setIsTimeout(true);
-      }
-    }, 30000);
-
-    setIsTimeout(false);
-    setLoadingPhase(LoadingPhase.INITIALIZING);
-    setDisplayProgress(0);
-    setTargetProgress(PHASE_TARGETS[LoadingPhase.INITIALIZING]);
+    setBootFailed(false);
 
     const runBootstrap = async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-      if (cancelled) return;
-      setLoadingPhase(LoadingPhase.FETCHING);
-      setTargetProgress(PHASE_TARGETS[LoadingPhase.FETCHING]);
       const completed = await bootstrap();
-      if (cancelled) return;
-      if (completed) {
-        window.clearTimeout(timeout);
-        setLoadingPhase(LoadingPhase.FINALIZING);
-        setTargetProgress(PHASE_TARGETS[LoadingPhase.FINALIZING]);
+      if (!cancelled && !completed) {
+        setBootFailed(true);
       }
     };
 
@@ -115,7 +85,6 @@ export default function App() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timeout);
     };
   }, [bootstrap, bootAttempt]);
 
@@ -134,19 +103,6 @@ export default function App() {
       window.removeEventListener('resize', updateWidth);
     };
   }, [bootstrapping]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setDisplayProgress((current) => {
-        if (current >= targetProgress) {
-          return targetProgress;
-        }
-        const next = Math.min(targetProgress, current + 0.1);
-        return Math.round(next * 1000) / 1000;
-      });
-    }, loadingPhase === LoadingPhase.FINALIZING ? 4 : 80);
-    return () => window.clearInterval(timer);
-  }, [loadingPhase, targetProgress]);
 
   useEffect(() => {
     if (!error) return undefined;
@@ -186,28 +142,16 @@ export default function App() {
     window.addEventListener('pointerup', stop);
   };
 
-  const currentProgress = Math.min(100, displayProgress);
-  const bootErrorMessage = error || (isTimeout ? copy.app.bootTimeout : '');
-  const canShowBootError = Boolean(bootErrorMessage) && (currentProgress >= 100 || isTimeout);
-  const showBootScreen = !bypassBootScreenRef.current
-    && (bootstrapping || currentProgress < 100 || canShowBootError);
-  const phaseLabel = copy.app.loadingPhases?.[loadingPhase] || copy.app.bootHint;
+  const showBootScreen = !bypassBootScreenRef.current && (bootstrapping || bootFailed);
 
   if (showBootScreen) {
     return (
       <main className="boot-screen">
-        <div className="boot-card">
-          <Loader2 className="animate-spin" size={28} />
-          <span>{copy.app.booting}</span>
-          <div className="boot-progress" aria-label={copy.app.loadingProgress}>
-            <div style={{ width: `${currentProgress}%` }} />
-          </div>
-          <strong>{currentProgress.toFixed(1)}%</strong>
-          <small className="boot-muted">{phaseLabel}</small>
-        </div>
-        {canShowBootError && (
+        <Loader2 className="animate-spin" size={28} />
+        <span>{copy.app.booting}</span>
+        {bootFailed && error && (
           <>
-            <small>{bootErrorMessage}</small>
+            <small>{error}</small>
             <button
               type="button"
               onClick={() => {
@@ -230,7 +174,7 @@ export default function App() {
     : paneWidth;
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
       <Sidebar />
@@ -247,7 +191,7 @@ export default function App() {
       >
         <ChatPane
           title={activeConversation?.summary || activeConversation?.title || copy.sidebar.untitled}
-          subtitle={copy.chat.primarySubtitle}
+          subtitle=""
           messages={messages}
           branchMarkers={branchMarkers}
           hiddenMemoryCount={hiddenMemoryCount}
