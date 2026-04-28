@@ -33,8 +33,7 @@ export default function ParallelPane({
   return (
     <section className="parallel-wrap">
       <div className="parallel-toolbar">
-        <div>
-          <p className="eyebrow">{copy.parallel.toolbarEyebrow}</p>
+        <div className="parallel-toolbar-title">
           <h3>{readOnly ? copy.parallel.snapshotTitle : copy.parallel.openTitle}</h3>
         </div>
         <div className="parallel-toolbar-actions">
@@ -46,7 +45,7 @@ export default function ParallelPane({
             options={providers.map((provider) => ({
               value: provider.id,
               label: provider.name,
-              description: provider.model_name,
+              description: [provider.provider_type, provider.model_name].filter(Boolean).join(' · '),
             }))}
           />
           <button

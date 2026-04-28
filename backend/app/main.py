@@ -47,6 +47,24 @@ def sse_event(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {payload}\n\n"
 
 
+INTERRUPTED_SUFFIX = "\n\n> 生成已被打断。"
+EMPTY_INTERRUPTED_CONTENT = "> 生成已被打断，尚未收到模型输出。"
+
+
+def interrupted_content(content: str) -> str:
+    clean = (content or "").rstrip()
+    if "生成已被打断" in clean:
+        return clean
+    return f"{clean}{INTERRUPTED_SUFFIX}" if clean else EMPTY_INTERRUPTED_CONTENT
+
+
+def persist_message_content(message_id: str | None, content: str) -> dict | None:
+    if not message_id:
+        return None
+    with get_connection() as conn:
+        return repo.update_message_content(conn, message_id, content)
+
+
 def summarize_branch_for_memory(branch_id: str, provider_id: str | None) -> str:
     with get_connection() as conn:
         branch = repo.require_branch(conn, branch_id)
@@ -245,6 +263,7 @@ def chat_main_stream(payload: ChatRequest) -> StreamingResponse:
         full_content = ""
         assistant_message = None
         provider = None
+        completed = False
         try:
             with get_connection() as conn:
                 repo.require_conversation(conn, payload.conversation_id)
@@ -283,16 +302,18 @@ def chat_main_stream(payload: ChatRequest) -> StreamingResponse:
             yield sse_event("assistant_start", {"message": assistant_message})
             for delta in stream_chat(provider, context):
                 full_content += delta
-                yield sse_event("delta", {"content": delta})
-            with get_connection() as conn:
                 if assistant_message:
-                    assistant_message = repo.update_message_content(conn, assistant_message["id"], full_content)
+                    persist_message_content(assistant_message["id"], full_content)
+                yield sse_event("delta", {"content": delta})
+            if assistant_message:
+                assistant_message = persist_message_content(assistant_message["id"], full_content)
             summarize_conversation_intent(
                 payload.conversation_id,
                 payload.provider_id,
                 seed_content=payload.content,
                 provider=provider,
             )
+            completed = True
             yield sse_event(
                 "done",
                 {
@@ -301,10 +322,12 @@ def chat_main_stream(payload: ChatRequest) -> StreamingResponse:
                 },
             )
         except Exception as exc:
-            if assistant_message and full_content:
-                with get_connection() as conn:
-                    repo.update_message_content(conn, assistant_message["id"], full_content)
+            if assistant_message:
+                persist_message_content(assistant_message["id"], interrupted_content(full_content))
             yield sse_event("error", {"message": str(exc)})
+        finally:
+            if assistant_message and not completed:
+                persist_message_content(assistant_message["id"], interrupted_content(full_content))
 
     return StreamingResponse(generate(), media_type="text/event-stream; charset=utf-8")
 
@@ -370,6 +393,7 @@ def chat_parallel_stream(payload: ParallelChatRequest) -> StreamingResponse:
     def generate():
         full_content = ""
         assistant_message = None
+        completed = False
         try:
             with get_connection() as conn:
                 branch = repo.require_branch(conn, payload.branch_id)
@@ -404,16 +428,20 @@ def chat_parallel_stream(payload: ParallelChatRequest) -> StreamingResponse:
             yield sse_event("assistant_start", {"message": assistant_message})
             for delta in stream_chat(provider, context):
                 full_content += delta
-                yield sse_event("delta", {"content": delta})
-            with get_connection() as conn:
                 if assistant_message:
-                    repo.update_message_content(conn, assistant_message["id"], full_content)
+                    persist_message_content(assistant_message["id"], full_content)
+                yield sse_event("delta", {"content": delta})
+            if assistant_message:
+                persist_message_content(assistant_message["id"], full_content)
+            completed = True
             yield sse_event("done", {"branch": repo.branch_detail(payload.branch_id)})
         except Exception as exc:
-            if assistant_message and full_content:
-                with get_connection() as conn:
-                    repo.update_message_content(conn, assistant_message["id"], full_content)
+            if assistant_message:
+                persist_message_content(assistant_message["id"], interrupted_content(full_content))
             yield sse_event("error", {"message": str(exc)})
+        finally:
+            if assistant_message and not completed:
+                persist_message_content(assistant_message["id"], interrupted_content(full_content))
 
     return StreamingResponse(generate(), media_type="text/event-stream; charset=utf-8")
 

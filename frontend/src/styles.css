@@ -38,17 +38,17 @@ button {
 .app-shell {
   position: relative;
   display: grid;
-  grid-template-columns: var(--sidebar-width, 280px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: var(--sidebar-width, 264px) minmax(0, 1fr);
+  gap: 14px;
   height: 100dvh;
-  padding: 18px;
+  padding: 14px;
   overflow: hidden;
   transition: grid-template-columns 220ms ease, gap 220ms ease;
 }
 
 .app-shell.sidebar-collapsed {
-  --sidebar-width: 66px;
-  gap: 14px;
+  --sidebar-width: 60px;
+  gap: 12px;
 }
 
 .ambient {
@@ -89,11 +89,11 @@ button {
 .sidebar {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 36px);
-  padding: 18px;
+  height: calc(100vh - 28px);
+  padding: 14px;
   overflow-y: auto;
   border: 1px solid rgba(74, 63, 46, 0.16);
-  border-radius: 30px;
+  border-radius: 24px;
   background: rgba(255, 250, 240, 0.72);
   box-shadow: 0 22px 80px rgba(67, 55, 34, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.68);
   backdrop-filter: blur(24px);
@@ -105,7 +105,7 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .sidebar-topbar {
@@ -115,14 +115,14 @@ button {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 0;
   color: #fff7e8;
-  background: #1e403a;
-  box-shadow: 0 14px 34px rgba(30, 64, 58, 0.28);
+  background: #2f6658;
+  box-shadow: 0 12px 28px rgba(47, 102, 88, 0.22);
 }
 
 .brand-toggle:hover {
@@ -132,8 +132,8 @@ button {
 .sidebar-search-toggle {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 16px;
   color: #28443c;
@@ -145,12 +145,12 @@ button {
 .sidebar-search-toggle.active {
   transform: translateY(-1px);
   color: #fff7e8;
-  background: #1f493f;
+  background: #2f6658;
 }
 
 .sidebar.is-collapsed {
   align-items: center;
-  padding: 10px;
+  padding: 9px;
   overflow: hidden;
   border-radius: 24px;
 }
@@ -167,8 +167,8 @@ button {
 .rail-button {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 16px;
   color: #28443c;
@@ -179,18 +179,18 @@ button {
 .rail-button:hover {
   transform: translateY(-1px);
   color: #fff7e8;
-  background: #1f493f;
+  background: #2f6658;
 }
 
 .rail-brand {
   color: #fff7e8;
-  background: #1e403a;
-  box-shadow: 0 14px 34px rgba(30, 64, 58, 0.24);
+  background: #2f6658;
+  box-shadow: 0 12px 28px rgba(47, 102, 88, 0.2);
 }
 
 .rail-engine {
   color: #fff7e8;
-  background: #9b5c25;
+  background: #b77738;
 }
 
 .rail-spacer {
@@ -211,7 +211,7 @@ button {
   border: 0;
   border-radius: 999px;
   color: #fff9ec;
-  background: #1f493f;
+  background: #2f6658;
   box-shadow: 0 12px 28px rgba(31, 73, 63, 0.2);
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
@@ -229,14 +229,14 @@ button {
 
 .new-chat {
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
 }
 
 .conversation-list {
   display: grid;
   align-content: start;
   gap: 8px;
-  margin: 18px 0;
+  margin: 14px 0;
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -294,8 +294,8 @@ button {
   gap: 10px;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: 38px;
+  padding: 8px 10px;
   border: 1px solid transparent;
   border-radius: 16px;
   color: #35413c;
@@ -360,15 +360,15 @@ button {
 
 .sidebar-footer {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
   margin-top: auto;
 }
 
 .settings-button,
 .settings-icon-button {
-  min-height: 44px;
-  background: #9b5c25;
+  min-height: 40px;
+  background: #b77738;
 }
 
 .settings-button {
@@ -401,7 +401,7 @@ button {
 
 .settings-icon-button {
   padding: 0;
-  background: #1f493f;
+  background: #2f6658;
 }
 
 .workspace {
@@ -409,7 +409,7 @@ button {
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
   min-width: 0;
-  height: calc(100vh - 36px);
+  height: calc(100vh - 28px);
   overflow: hidden;
   transition: grid-template-columns 240ms ease;
 }
@@ -422,9 +422,9 @@ button {
 .parallel-wrap {
   container-type: inline-size;
   min-width: 0;
-  height: calc(100vh - 36px);
+  height: calc(100vh - 28px);
   border: 1px solid rgba(63, 74, 65, 0.16);
-  border-radius: 30px;
+  border-radius: 24px;
   box-shadow: 0 26px 82px rgba(47, 59, 52, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(22px);
   overflow: hidden;
@@ -447,7 +447,7 @@ button {
   height: 100%;
   min-height: 0;
   border: 0;
-  border-radius: 24px;
+  border-radius: 20px;
   background:
     linear-gradient(rgba(17, 29, 28, 0.42), rgba(17, 29, 28, 0.42)),
     var(--branch-pane-bg, rgba(17, 29, 28, 0.62));
@@ -457,7 +457,7 @@ button {
 .parallel-wrap {
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 10px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--branch-pane-bg, #1f2d2c) 86%, #111 14%), rgba(45, 57, 50, 0.88)),
     radial-gradient(circle at top right, rgba(231, 158, 73, 0.28), transparent 22rem);
@@ -470,10 +470,16 @@ button {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
-  padding: 20px 22px 16px;
+  padding: 14px 18px 12px;
   border-bottom: 1px solid rgba(67, 75, 65, 0.1);
+}
+
+.parallel-toolbar {
+  align-items: center;
+  flex-wrap: nowrap;
+  padding: 10px;
 }
 
 .pane-header-primary {
@@ -510,7 +516,7 @@ button {
   grid-area: brand;
   display: grid;
   justify-self: start;
-  gap: 1px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -520,7 +526,7 @@ button {
   font-size: clamp(19px, 2.3vw, 25px);
   font-weight: 950;
   letter-spacing: -0.06em;
-  line-height: 0.98;
+  line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -531,7 +537,7 @@ button {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  line-height: 1.15;
+  line-height: 1.1;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -679,9 +685,9 @@ button {
 .message-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-height: 0;
-  padding: 22px 36px 22px 22px;
+  padding: 18px 32px 18px 18px;
   overflow-x: hidden;
   overflow-y: auto;
   scroll-behavior: smooth;
@@ -695,7 +701,7 @@ button {
 
 .message-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
   animation: rise 260ms ease both;
 }
@@ -708,14 +714,14 @@ button {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 13px;
   color: #fff6e5;
 }
 
 .avatar-ai {
-  background: #1f493f;
+  background: #2f6658;
 }
 
 .avatar-user {
@@ -729,8 +735,8 @@ button {
 
 .message-bubble {
   max-width: min(760px, 82%);
-  padding: 14px 16px;
-  border-radius: 22px;
+  padding: 12px 15px;
+  border-radius: 19px;
   box-shadow: 0 14px 35px rgba(35, 47, 43, 0.08);
 }
 
@@ -922,17 +928,17 @@ button {
 .composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .composer-input {
   width: 100%;
   resize: none;
   border: 1px solid rgba(50, 67, 60, 0.12);
-  border-radius: 22px;
+  border-radius: 18px;
   outline: none;
-  padding: 14px 16px;
+  padding: 12px 14px;
   color: #17211f;
   background: rgba(255, 255, 255, 0.68);
 }
@@ -950,8 +956,8 @@ button {
 
 .send-button {
   align-self: end;
-  min-height: 46px;
-  padding: 0 16px;
+  min-height: 42px;
+  padding: 0 14px;
 }
 
 .send-button:disabled,
@@ -1051,16 +1057,27 @@ button {
   align-items: center;
   justify-content: flex-end;
   flex: 1 1 auto;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 7px;
   min-width: 0;
   max-width: 100%;
 }
 
+.parallel-toolbar-title {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.parallel-toolbar-title h3 {
+  max-width: 96px;
+  font-size: 16px;
+  text-transform: lowercase;
+}
+
 .parallel-toolbar-actions .parallel-model {
-  flex: 1 1 220px;
-  min-width: min(220px, 100%);
-  max-width: min(320px, 100%);
+  flex: 1 1 240px;
+  min-width: min(172px, 100%);
+  max-width: min(360px, 100%);
 }
 
 .parallel-toolbar-actions .parallel-model .pretty-select-label {
@@ -1070,7 +1087,7 @@ button {
 }
 
 .parallel-model .pretty-select-trigger {
-  min-height: 40px;
+  min-height: 38px;
   color: #f8f0df;
   background: rgba(255, 255, 255, 0.08);
 }
@@ -1436,8 +1453,8 @@ button {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border: 0;
   border-radius: 14px;
   color: inherit;
@@ -1448,8 +1465,8 @@ button {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   color: rgba(248, 240, 223, 0.82);
@@ -1761,13 +1778,27 @@ button {
 }
 
 .pretty-select-value {
+  display: grid;
+  gap: 1px;
   min-width: 0;
   overflow: hidden;
   color: inherit;
   font-size: inherit;
   font-weight: 800;
+}
+
+.pretty-select-main,
+.pretty-select-value small {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pretty-select-value small {
+  color: currentColor;
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.64;
 }
 
 .select-chevron {
@@ -2032,12 +2063,19 @@ button {
 }
 
 @container (max-width: 620px) {
-  .pane-header,
-  .parallel-toolbar {
+  .pane-header {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
     padding: 16px;
+  }
+
+  .parallel-toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 9px;
   }
 
   .pane-header-primary {
@@ -2064,14 +2102,19 @@ button {
     justify-content: flex-end;
   }
 
-  .pane-actions,
-  .parallel-toolbar-actions {
+  .pane-actions {
     justify-content: flex-start;
   }
 
+  .parallel-toolbar-actions {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+
   .parallel-toolbar-actions .parallel-model {
-    flex-basis: 100%;
-    max-width: 100%;
+    flex: 1 1 180px;
+    min-width: 128px;
+    max-width: none;
   }
 
   .memory-chip,
@@ -2086,6 +2129,25 @@ button {
 }
 
 @container (max-width: 460px) {
+  .parallel-toolbar-title h3 {
+    max-width: 72px;
+  }
+
+  .parallel-toolbar-actions {
+    gap: 5px;
+  }
+
+  .parallel-toolbar-actions .parallel-model {
+    min-width: 104px;
+  }
+
+  .branch-tool-button,
+  .icon-button {
+    width: 33px;
+    height: 33px;
+    border-radius: 12px;
+  }
+
   .composer {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;

@@ -174,6 +174,29 @@ function appendDelta(messages, assistantId, delta) {
   ));
 }
 
+const INTERRUPTED_SUFFIX = '\n\n> 生成已被打断。';
+const EMPTY_INTERRUPTED_CONTENT = '> 生成已被打断，尚未收到模型输出。';
+
+function interruptedMessageContent(content = '') {
+  const clean = content.trimEnd();
+  if (clean.includes('生成已被打断')) return clean;
+  return clean ? `${clean}${INTERRUPTED_SUFFIX}` : EMPTY_INTERRUPTED_CONTENT;
+}
+
+function markLatestAssistantInterrupted(messages) {
+  const next = [...messages];
+  for (let index = next.length - 1; index >= 0; index -= 1) {
+    if (next[index]?.role === 'assistant') {
+      next[index] = {
+        ...next[index],
+        content: interruptedMessageContent(next[index].content),
+      };
+      break;
+    }
+  }
+  return next;
+}
+
 export const useChatStore = create((set, get) => ({
   ...initialState,
 
@@ -515,7 +538,11 @@ export const useChatStore = create((set, get) => ({
   stopMainGeneration: () => {
     mainAbortController?.abort();
     mainAbortController = null;
-    set({ mainLoading: false });
+    set((state) => ({
+      mainLoading: false,
+      messages: markLatestAssistantInterrupted(state.messages),
+    }));
+    writeWorkspaceCache(get());
   },
 
   openBranch: async (options = {}) => {
@@ -700,7 +727,11 @@ export const useChatStore = create((set, get) => ({
   stopBranchGeneration: () => {
     branchAbortController?.abort();
     branchAbortController = null;
-    set({ branchLoading: false });
+    set((state) => ({
+      branchLoading: false,
+      branchMessages: markLatestAssistantInterrupted(state.branchMessages),
+    }));
+    writeWorkspaceCache(get());
   },
 
   closeBranch: async () => {

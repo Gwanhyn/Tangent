@@ -61,9 +61,9 @@
     "copied": "Copied"
   },
   "parallel": {
-    "toolbarEyebrow": "Branch Mode",
-    "openTitle": "Side-probe / Branch",
-    "snapshotTitle": "Branch Snapshot",
+    "toolbarEyebrow": "branch",
+    "openTitle": "branch",
+    "snapshotTitle": "snapshot",
     "close": "Close branch",
     "model": "Engine",
     "memoryOn": "Memory Persistence",

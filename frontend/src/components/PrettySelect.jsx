@@ -76,7 +76,10 @@ export default function PrettySelect({
         type="button"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="pretty-select-value">{selected?.label || 'Select'}</span>
+        <span className="pretty-select-value">
+          <span className="pretty-select-main">{selected?.label || 'Select'}</span>
+          {selected?.description && <small>{selected.description}</small>}
+        </span>
         <ChevronDown className={open ? 'select-chevron open' : 'select-chevron'} size={16} />
       </button>
       {hint && <span className="pretty-select-hint">{hint}</span>}
