@@ -144,7 +144,26 @@ def delete_provider(provider_id: str) -> None:
 
 def list_conversations() -> list[dict[str, Any]]:
     with get_connection() as conn:
-        rows = conn.execute("SELECT * FROM conversations ORDER BY updated_at DESC").fetchall()
+        rows = conn.execute(
+            """
+            SELECT
+                c.*,
+                TRIM(COALESCE((
+                    SELECT GROUP_CONCAT(m.content, ' ')
+                    FROM messages m
+                    WHERE m.conversation_id = c.id
+                      AND m.is_hidden = 1
+                ), '') || ' ' || COALESCE((
+                    SELECT GROUP_CONCAT(b.memory_summary, ' ')
+                    FROM branches b
+                    WHERE b.conversation_id = c.id
+                      AND b.memory_summary IS NOT NULL
+                      AND TRIM(b.memory_summary) != ''
+                ), '')) AS searchable_memory
+            FROM conversations c
+            ORDER BY c.updated_at DESC
+            """
+        ).fetchall()
     return [row_to_dict(row) for row in rows]
 
 
@@ -499,7 +518,7 @@ def create_branch(
                 parent_id,
                 parent_id,
                 base_context_json,
-                (selected_text or "").strip()[:4000] or None,
+                (selected_text or "").strip() or None,
                 int(sync_memory),
                 now,
                 now,

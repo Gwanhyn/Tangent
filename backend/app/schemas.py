@@ -53,6 +53,7 @@ class ConversationOut(BaseModel):
     id: str
     title: str
     summary: str | None = None
+    searchable_memory: str | None = None
     created_at: str
     updated_at: str
 

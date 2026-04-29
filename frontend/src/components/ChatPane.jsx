@@ -47,7 +47,7 @@ export default function ChatPane({
 
   useEffect(() => {
     const el = listRef.current;
-    if (!el || (!autoScroll && !loading)) return;
+    if (!el || !autoScroll) return;
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, autoScroll, loading]);
 
@@ -70,10 +70,13 @@ export default function ChatPane({
       const selection = window.getSelection();
       const text = selection?.toString().trim();
       const row = event.target.closest?.('[data-message-id]');
-      if (!text || text.length < 2 || !row) {
+      if (!text || text.length < 1 || !row || !selection?.rangeCount) {
         setSelectionTrigger(null);
         return;
       }
+      const range = selection.getRangeAt(0);
+      const rangeRects = Array.from(range.getClientRects()).filter((rect) => rect.width || rect.height);
+      const selectionRect = rangeRects[rangeRects.length - 1] || range.getBoundingClientRect();
       const paneRect = shellRef.current?.getBoundingClientRect();
       const bounds = paneRect || {
         left: 0,
@@ -85,11 +88,13 @@ export default function ChatPane({
       const minY = bounds.top + 10;
       const maxX = Math.max(minX, bounds.right - 76);
       const maxY = Math.max(minY, bounds.bottom - 40);
+      const selectionCenter = selectionRect.left + (selectionRect.width / 2);
+      const belowSelection = selectionRect.bottom + 8;
       setSelectionTrigger({
-        text: text.slice(0, 1200),
+        text,
         parentId: row.dataset.messageId,
-        x: Math.min(Math.max(event.clientX, minX), maxX),
-        y: Math.min(Math.max(event.clientY + 10, minY), maxY),
+        x: Math.min(Math.max(selectionCenter - 36, minX), maxX),
+        y: Math.min(Math.max(belowSelection, minY), maxY),
       });
     }, 0);
   };
@@ -102,6 +107,11 @@ export default function ChatPane({
     });
     setSelectionTrigger(null);
     window.getSelection()?.removeAllRanges();
+  };
+
+  const sendFromComposer = async (content) => {
+    setAutoScroll(true);
+    await onSend(content);
   };
 
   const jumpToMessage = (messageId) => {
@@ -298,7 +308,7 @@ export default function ChatPane({
           </button>
         )}
         <Composer
-          onSend={onSend}
+          onSend={sendFromComposer}
           loading={loading}
           disabled={disabled}
           placeholder={placeholder}

@@ -26,6 +26,7 @@ export default function Sidebar() {
       const haystack = [
         conversation.summary,
         conversation.title,
+        conversation.searchable_memory,
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(normalizedSearch);
     });

@@ -3,6 +3,7 @@ import Prism from 'prismjs';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-python';
@@ -19,9 +20,9 @@ import { useCopy } from '../i18n';
 function CodeBlock({ className = '', children }) {
   const copyText = useCopy();
   const [copied, setCopied] = useState(false);
-  const language = /language-(\w+)/.exec(className)?.[1] || 'text';
+  const language = /language-([\w-]+)/.exec(className)?.[1] || 'text';
   const raw = String(children || '').replace(/\n$/, '');
-  const grammar = Prism.languages[language] || Prism.languages.markup;
+  const grammar = Prism.languages[language] || Prism.languages.markup || Prism.languages.text;
   const highlighted = grammar ? Prism.highlight(raw, grammar, language) : raw;
 
   const copy = async () => {
@@ -55,8 +56,17 @@ export default function MarkdownContent({ content }) {
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
       components={{
-        code({ inline, className, children, ...props }) {
-          if (inline) {
+        pre({ children }) {
+          return <>{children}</>;
+        },
+        code({ inline, className = '', children, node, ...props }) {
+          const raw = String(children || '');
+          const isInline = inline ?? (
+            node?.position?.start?.line === node?.position?.end?.line
+            && !raw.includes('\n')
+            && !className
+          );
+          if (isInline) {
             return <code className="inline-code" {...props}>{children}</code>;
           }
           return <CodeBlock className={className}>{children}</CodeBlock>;
