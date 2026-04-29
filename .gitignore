@@ -6,4 +6,4 @@ backend/app.db
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-
+optimization-notes/

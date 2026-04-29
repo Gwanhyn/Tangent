@@ -22,8 +22,8 @@ export default function PreferencesPanel() {
   } = useChatStore();
 
   return (
-    <aside className="settings-drawer">
-      <div className="settings-panel preferences-panel">
+    <aside className="settings-drawer" onClick={() => setSettingsOpen(false)}>
+      <div className="settings-panel preferences-panel" onClick={(event) => event.stopPropagation()}>
         <header className="settings-header">
           <div>
             <p className="eyebrow">{copy.preferences.eyebrow}</p>

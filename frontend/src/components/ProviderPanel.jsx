@@ -117,9 +117,15 @@ export default function ProviderPanel() {
     }
   };
 
+  const closeOnBackdrop = () => {
+    if (!editingProviderId) {
+      setEnginesOpen(false);
+    }
+  };
+
   return (
-    <aside className="settings-drawer">
-      <div className="settings-panel">
+    <aside className="settings-drawer" onClick={closeOnBackdrop}>
+      <div className="settings-panel" onClick={(event) => event.stopPropagation()}>
         <header className="settings-header">
           <div>
             <p className="eyebrow">{copy.settings.eyebrow}</p>
